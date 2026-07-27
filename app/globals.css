@@ -1,26 +1,190 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* เปิดใช้ dark mode แบบ class strategy (เพิ่ม .dark ที่ <html>) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ==========================================================================
+   Meb Design System — Tailwind v4 theme tokens
+   อ้างอิง: meb-design-system/referencs/design-tokens.md
+   ========================================================================== */
+@theme {
+  /* Font — Noto Sans Thai (self-hosted ผ่าน next/font/google) */
+  --font-sans: var(--font-noto-sans-thai), "Noto Sans Thai", sans-serif;
+
+  /* Brand green */
+  --color-meb-green: #00a651;
+  --color-meb-hover: #008c44;
+  --color-meb-light: #e6f6ec;
+  --color-meb-nav: #009348;
+
+  /* Price / promotion red */
+  --color-price-red: #e53935;
+  --color-ribbon-red: #e11d48;
+
+  /* Page / card / border */
+  --color-page-bg: #f8f9fa;
+  --color-card-bg: #ffffff;
+  --color-border-base: #e5e7eb;
+
+  /* Info boxes */
+  --color-info-yellow-bg: #fcf8e3;
+  --color-info-yellow-border: #faebcc;
+  --color-info-blue-bg: #e3f2fd;
+  --color-info-blue-border: #bbdefb;
+  --color-info-blue-text: #1976d2;
+
+  /* Rating */
+  --color-star-full: #facc15; /* yellow-400 */
+  --color-star-empty: #cbd5e1; /* slate-300 */
+
+  /* Landing palette — "Classic Academic & Organic Calm" (60:30:10) */
+  --color-cream: #faf6f0; /* dominant 60% */
+  --color-forest: #1e3f20; /* secondary 30% — deep forest green */
+  --color-navy-ink: #1d242b; /* secondary 30% — charcoal navy */
+  --color-terracotta: #e05b35; /* accent 10% — terracotta amber */
+  --color-terracotta-hover: #c84a2a;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* ==========================================================================
+   Dark theme — override tokens ในโหมด .dark
+   ปรับแค่พื้นหลัง/ตัวอักษร/การ์ด สีแบรนด์ (เขียว/แดง) คงเดิม
+   ========================================================================== */
+.dark {
+  --color-page-bg: #0f1419;
+  --color-card-bg: #1a2027;
+  --color-border-base: #2d3743;
+  --color-cream: #1a2027; /* ใช้ใน Hero/Features พื้นเข้ม */
+  --color-forest: #e6f6ec; /* ข้อความหัวข้อกลับเป็นสว่าง */
+  --color-navy-ink: #cbd5e1;
+
+  --color-info-yellow-bg: #2d2a1f;
+  --color-info-yellow-border: #4a4530;
+  --color-info-blue-bg: #1a2a3a;
+  --color-info-blue-border: #2a4a6a;
+  --color-info-blue-text: #60a5fa;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Hide scrollbar สำหรับ carousel / tabs เลื่อนแนวนอน */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ==========================================================================
+   ริบบอนป้าย "ฟรี" บนปกหนังสือ — clip-path รูปธง 5 มุม
+   ใช้กับ .meb-ribbon บน element ที่มี bg-ribbon-red อยู่แล้ว
+   ========================================================================== */
+.meb-ribbon {
+  clip-path: polygon(100% 0, 100% 100%, 50% 82%, 0 100%, 0 0);
+}
+
+/* เหรียญอันดับ (rank badges) — gradient สำหรับวงกลมเลขอันดับ */
+.rank-gold {
+  background: linear-gradient(to bottom, #ffd700, #ffaa00);
+}
+.rank-silver {
+  background: linear-gradient(to bottom, #e0e0e0, #9e9e9e);
+}
+.rank-bronze {
+  background: linear-gradient(to bottom, #ffbca8, #d87a5d);
+}
+.rank-black {
+  background: linear-gradient(to bottom, #4a4a4a, #1a1a1a);
+}
+
+/* ==========================================================================
+   Animations — Explorecore (gentle, organic) ตาม web-animation-design-guide.md
+   คุมความเร็ว 200–400ms, ใช้ cubic-bezier ธรรมชาติ
+   ========================================================================== */
+@keyframes meb-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-body {
+@keyframes meb-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-up {
+  animation: meb-fade-up 600ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.animate-fade-in {
+  animation: meb-fade-in 600ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ลูกเล่น hover ปุ่ม CTA — เพิ่ม Contrast เล็กน้อย ไม่กระตุก */
+.btn-cta {
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 200ms ease;
+}
+.btn-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -10px rgba(224, 91, 53, 0.5);
+}
+.btn-cta:active {
+  transform: translateY(0);
+}
+
+/* Card lift — hover ที่การ์ด/บล็อก ยกตัวเล็กน้อย + shadow scaling (ตามตารางข้อ 3) */
+.card-lift {
+  transition: transform 250ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 250ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.card-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px -12px rgba(30, 63, 32, 0.18);
+}
+
+/* Spotlight บางๆ บน CTA หลัก — Attention Path animation */
+@keyframes meb-spotlight {
+  0%,
+  100% {
+    box-shadow: 0 10px 25px -10px rgba(224, 91, 53, 0.5);
+  }
+  50% {
+    box-shadow: 0 10px 30px -8px rgba(224, 91, 53, 0.7);
+  }
+}
+.spotlight {
+  animation: meb-spotlight 2.4s ease-in-out infinite;
+}
+
+/* เคารพผู้ใช้ที่ไวแสง — ปิด animation ทั้งหมด */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ปิด dark mode default ของ scaffold (ห้องสมุดใช้ light theme) */
+:root {
+  --background: #f8f9fa;
+  --foreground: #333333;
+}
+
+body, html {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  overflow-x: hidden;
 }

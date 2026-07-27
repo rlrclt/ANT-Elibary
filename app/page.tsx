@@ -1,65 +1,49 @@
-import Image from "next/image";
+import { Header } from "./components/header";
+import { Hero } from "./components/hero";
+import { Stats } from "./components/stats";
+import { MiniCTA } from "./components/mini-cta";
+import { Features } from "./components/features";
+import { FinalCTA } from "./components/final-cta";
+import { Footer } from "./components/footer";
+import { PublicAnnouncements } from "./components/public-announcements";
 
-export default function Home() {
+/**
+ * ANT E-Library — วิทยาลัยเทคนิคอำนาจเจริญ
+ * Landing Page (ไม่มีหนังสือแนะนำ — เน้นพูดถึงตัวระบบห้องสมุดดิจิทัล)
+ *
+ * ออกแบบตาม:
+ * - meb-design-system/referencs/* (tokens, components, page-patterns)
+ * - เทมเพลส/* (color theory 60:30:10, responsive grid, web design patterns, animation)
+ *
+ * Layout flow ตาม Z-Pattern + Progressive Disclosure:
+ *   Header → Hero (Headline + CTA) → Stats (Trust) → MiniCTA (แทรก CTA ซ้ำตาม scroll) → Features (3 blocks) → FinalCTA (Terminal Area) → Footer
+ */
+export default function HomePage() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+    <>
+      <Header />
+
+      <main className="flex-1 flex flex-col">
+        {/* Hero — Entry point, จับสายตาภายใน 3 วินาที */}
+        <Hero />
+
+        {/* Stats — Social proof สั้นๆ สร้างความน่าเชื่อถือ */}
+        <Stats />
+
+        {/* MiniCTA — แทรกปุ่ม CTA ซ้ำตาม spec มือถือ (ทุก 2-3 ช่วง scroll) */}
+        <MiniCTA />
+
+        {/* Features — 3 ฟีเจอร์หลักของระบบ แบ่ง 4 columns each */}
+        <Features />
+
+        {/* Final CTA — Terminal Area, ปิดการขายด้านล่าง */}
+        <FinalCTA />
       </main>
-    </div>
+
+      <Footer />
+
+      {/* Popup ประกาศบนหน้าแรก (fixed overlay, dismiss แล้วเก็บใน localStorage) */}
+      <PublicAnnouncements />
+    </>
   );
 }

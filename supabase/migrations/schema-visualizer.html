@@ -1,0 +1,1448 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>E-Library Schema Visualizer</title>
+
+<!-- ========== ไลบรารี CDN (ไม่ต้องติดตั้งอะไร เปิดไฟล์ก็ใช้ได้) ========== -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" defer></script>
+<script defer>
+  window.addEventListener('load', function(){
+    if (!window.hljs) return;
+    try { hljs.configure({ ignoreUnescapedHTML: true }); } catch(e){}
+  });
+</script>
+
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          primary: '#4F46E5',
+          sidebar: '#0F172A',
+          card: '#1E293B',
+        },
+        fontFamily: {
+          sans: ['Sarabun', 'system-ui', 'sans-serif'],
+        },
+      },
+    },
+  };
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+<style>
+  html { scroll-behavior: smooth; }
+  body { font-family: 'Sarabun', system-ui, sans-serif; background:#F1F5F9; }
+  /* Scrollbar สวยๆ */
+  ::-webkit-scrollbar { width: 10px; height:10px; }
+  ::-webkit-scrollbar-track { background: #e2e8f0; }
+  ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius:6px; }
+  ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+  /* Markdown เนื้อหา */
+  .markdown-body h1 { font-size:1.875rem; font-weight:700; margin:1.5rem 0 1rem; color:#0f172a; border-bottom:2px solid #e2e8f0; padding-bottom:.5rem;}
+  .markdown-body h2 { font-size:1.5rem; font-weight:700; margin:1.5rem 0 .75rem; color:#1e293b; }
+  .markdown-body h3 { font-size:1.25rem; font-weight:600; margin:1.25rem 0 .5rem; color:#334155; }
+  .markdown-body p  { margin:.75rem 0; color:#334155; line-height:1.8; }
+  .markdown-body blockquote { border-left:4px solid #6366f1; background:#eef2ff; padding:.75rem 1rem; color:#4338ca; border-radius:.375rem; margin:1rem 0;}
+  .markdown-body table { width:100%; border-collapse:collapse; margin:1rem 0; border-radius:.5rem; overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,.05);}
+  .markdown-body table th { background:#4F46E5; color:#fff; padding:.75rem 1rem; text-align:left; font-weight:600;}
+  .markdown-body table td { padding:.75rem 1rem; border-bottom:1px solid #e2e8f0; background:#fff;}
+  .markdown-body table tr:hover td { background:#f8fafc; }
+  .markdown-body code { background:#f1f5f9; color:#db2777; padding:.125rem .375rem; border-radius:.375rem; font-size:.9em;}
+  .markdown-body pre { background:#0f172a !important; color:#e2e8f0; padding:1.25rem; border-radius:.75rem; overflow-x:auto; margin:1rem 0; }
+  .markdown-body pre code { background:transparent !important; color:#e2e8f0 !important; padding:0 !important; }
+  .markdown-body ul { list-style:disc; margin-left:1.5rem; color:#334155; line-height:1.9;}
+  .markdown-body ol { list-style:decimal; margin-left:1.5rem; color:#334155; line-height:1.9;}
+  .markdown-body hr { border:0; border-top:2px dashed #cbd5e1; margin:2rem 0;}
+  /* Mermaid diagram container */
+  .mermaid { background:#fff; padding:1.25rem; border-radius:.75rem; border:1px solid #e2e8f0; display:flex; justify-content:center; overflow-x:auto; margin:1rem 0; box-shadow:0 1px 3px rgba(0,0,0,.04);}
+  /* Tab active */
+  .tab-active { background:#4F46E5; color:#fff; box-shadow:0 4px 12px rgba(79,70,229,.3);}
+</style>
+</head>
+<body>
+
+<div class="min-h-screen flex">
+
+  <!-- =============== SIDEBAR =============== -->
+  <aside class="w-64 bg-sidebar text-white min-h-screen sticky top-0 overflow-y-auto hidden lg:block">
+    <div class="p-5 border-b border-slate-700">
+      <div class="flex items-center gap-2">
+        <div class="w-10 h-10 rounded-lg bg-indigo-500 flex items-center justify-center text-xl">📚</div>
+        <div>
+          <h1 class="font-bold text-lg">E-Library</h1>
+          <p class="text-xs text-slate-400">Schema Visualizer</p>
+        </div>
+      </div>
+    </div>
+
+    <nav class="p-3 space-y-1">
+      <p class="text-xs uppercase tracking-wider text-slate-500 px-3 mt-3 mb-2">Main Views</p>
+      <a href="#" onclick="switchTab('overview');return false;" data-tab="overview" class="tab-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800 transition">
+        <span>🏠</span> ภาพรวม & Best Practice
+      </a>
+      <a href="#" onclick="switchTab('er');return false;" data-tab="er" class="tab-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800 transition">
+        <span>🗄️</span> ER Diagram
+      </a>
+      <a href="#" onclick="switchTab('flows');return false;" data-tab="flows" class="tab-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800 transition">
+        <span>🔄</span> Data Flow (4 Flow)
+      </a>
+      <a href="#" onclick="switchTab('tables');return false;" data-tab="tables" class="tab-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800 transition">
+        <span>📋</span> Tables & Columns
+      </a>
+      <a href="#" onclick="switchTab('policies');return false;" data-tab="policies" class="tab-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800 transition">
+        <span>🔐</span> RLS Policies & Triggers
+      </a>
+
+      <p class="text-xs uppercase tracking-wider text-slate-500 px-3 mt-6 mb-2">Source</p>
+      <a href="#" onclick="switchTab('markdown');return false;" data-tab="markdown" class="tab-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800 transition">
+        <span>📝</span> SCHEMA_DESIGN.md
+      </a>
+      <a href="#" onclick="switchTab('sql');return false;" data-tab="sql" class="tab-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800 transition">
+        <span>💾</span> 001_init_schema.sql
+      </a>
+      <a href="#" onclick="switchTab('editor');return false;" data-tab="editor" class="tab-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800 transition">
+        <span>✏️</span> Edit Schema
+      </a>
+    </nav>
+
+    <div class="p-4 mt-6 border-t border-slate-700">
+      <p class="text-xs text-slate-400 mb-2">โหลดไฟล์ล่าสุด</p>
+      <div class="space-y-2">
+        <label class="block">
+          <span class="block text-xs text-slate-400 mb-1">SCHEMA_DESIGN.md</span>
+          <input type="file" accept=".md" onchange="loadFile(event,'md')"
+            class="block w-full text-xs text-slate-300 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer"/>
+        </label>
+        <label class="block">
+          <span class="block text-xs text-slate-400 mb-1">001_init_schema.sql</span>
+          <input type="file" accept=".sql" onchange="loadFile(event,'sql')"
+            class="block w-full text-xs text-slate-300 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer"/>
+        </label>
+      </div>
+      <div class="mt-3 text-[11px] text-slate-500 leading-relaxed">
+        💡 <b class="text-slate-300">แนะนำ:</b> เปิดผ่าน <code class="text-indigo-300">python3 server.py</code> (มี Save API + curl ได้)<br/>
+        <code class="text-slate-400">cd supabase/migrations</code><br/>
+        <code class="text-indigo-300">python3 server.py</code> &nbsp;<span class="text-slate-500">← แนะนำ</span><br/>
+        หรือแบบง่าย: <code class="text-slate-400">python3 -m http.server 8080</code>
+      </div>
+    </div>
+  </aside>
+
+  <!-- =============== MAIN CONTENT =============== -->
+  <main class="flex-1">
+
+    <!-- Top bar (mobile menu + status) -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-20">
+      <div class="flex items-center justify-between px-6 py-3 flex-wrap gap-3">
+        <div class="flex items-center gap-3">
+          <button class="lg:hidden text-2xl text-slate-700">☰</button>
+          <h2 id="pageTitle" class="text-lg lg:text-xl font-bold text-slate-800">🏠 ภาพรวมระบบ</h2>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <span id="mdStatus" class="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+            📝 MD: <span class="font-semibold">loading…</span>
+          </span>
+          <span id="sqlStatus" class="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+            💾 SQL: <span class="font-semibold">loading…</span>
+          </span>
+          <button onclick="refreshSources()" title="รีโหลด SQL + MD จากไฟล์ดิสก์ (F5)" class="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition">🔄 Refresh</button>
+          <button onclick="navigator.clipboard.writeText(sqlContent); alert('📋 คัดลอกโค้ด SQL ทั้งหมดแล้ว! นำไปวางใน Supabase SQL Editor ได้เลยครับ');" title="คัดลอก SQL ไปรันใน Supabase" class="text-xs px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition font-bold shadow-sm">📋 Copy SQL (Supabase)</button>
+          <button onclick="switchTab('editor')" title="แก้ไข Schema บนเว็บ แล้ว Export/Download/Save" class="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition">✏️ Edit &amp; Export</button>
+          <!-- Mobile tabs -->
+          <select onchange="switchTab(this.value)" class="lg:hidden text-xs px-3 py-1.5 rounded-lg border border-slate-200 bg-white">
+            <option value="overview">🏠 ภาพรวม</option>
+            <option value="er">🗄️ ER Diagram</option>
+            <option value="flows">🔄 Data Flow</option>
+            <option value="tables">📋 Tables</option>
+            <option value="policies">🔐 Policies</option>
+            <option value="markdown">📝 Markdown</option>
+            <option value="sql">💾 SQL</option>
+            <option value="editor">✏️ Edit &amp; Export</option>
+          </select>
+        </div>
+      </div>
+    </header>
+
+    <!-- ============== TABS CONTENT ============== -->
+    <section class="p-4 lg:p-8 max-w-[1400px] mx-auto">
+
+      <!-- ================== TAB: OVERVIEW ================== -->
+      <div data-tab-panel="overview" class="tab-panel">
+        <div class="grid lg:grid-cols-3 gap-5 mb-8">
+          <div class="bg-gradient-to-br from-indigo-500 to-purple-600 text-white p-6 rounded-2xl shadow-lg">
+            <p class="text-sm opacity-80">โมดูลหลัก</p>
+            <h3 class="text-3xl font-bold mt-2">2 โมดูล</h3>
+            <ul class="mt-4 text-sm space-y-2 opacity-95">
+              <li>📖 ระบบยืม-คืนหนังสือ</li>
+              <li>👥 สถิติเข้าใช้งานห้องสมุด</li>
+            </ul>
+          </div>
+          <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <p class="text-sm text-slate-500">จำนวนตาราง</p>
+            <h3 class="text-3xl font-bold text-slate-800 mt-2"><span id="cntTables">-</span> ตาราง</h3>
+            <div class="mt-4 flex flex-wrap gap-2" id="tableChips"></div>
+          </div>
+          <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <p class="text-sm text-slate-500">Policy + Trigger + Function</p>
+            <h3 class="text-3xl font-bold text-slate-800 mt-2"><span id="countSummary">-</span></h3>
+            <div class="mt-4 grid grid-cols-3 text-center text-xs gap-2">
+              <div class="bg-slate-50 rounded-lg py-2">
+                <p class="font-bold text-slate-700" id="cntPolicy">-</p>
+                <p class="text-slate-500">RLS</p>
+              </div>
+              <div class="bg-slate-50 rounded-lg py-2">
+                <p class="font-bold text-slate-700" id="cntTrigger">-</p>
+                <p class="text-slate-500">Trigger</p>
+              </div>
+              <div class="bg-slate-50 rounded-lg py-2">
+                <p class="font-bold text-slate-700" id="cntIndex">-</p>
+                <p class="text-slate-500">Index</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Best Practice Matrix -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <h3 class="font-bold text-lg text-slate-800 mb-4 flex items-center gap-2">🎯 ธุรกรรมอะไรใช้อะไรทำ (สรุป Best Practice)</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-slate-50 text-left">
+                  <th class="p-3 font-semibold text-slate-700 rounded-l-lg">ธุรกรรม</th>
+                  <th class="p-3 font-semibold text-slate-700">ใช้</th>
+                  <th class="p-3 font-semibold text-slate-700 rounded-r-lg">เหตุผล</th>
+                </tr>
+              </thead>
+              <tbody id="bpMatrix" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================== TAB: ER DIAGRAM ================== -->
+      <div data-tab-panel="er" class="tab-panel hidden">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-5">
+          <h3 class="font-bold text-lg text-slate-800 mb-2">🗄️ Entity Relationship Diagram (ERD)</h3>
+          <p class="text-sm text-slate-500">แสดงความสัมพันธ์ระหว่าง 5 ตาราง — คลิกลากซูมได้ (จาก Mermaid)</p>
+        </div>
+        <div class="mermaid" id="erMermaid"></div>
+
+        <!-- Relationship legend -->
+        <div class="mt-6 grid md:grid-cols-2 gap-4">
+          <div class="bg-white p-5 rounded-xl border border-slate-200">
+            <h4 class="font-bold text-slate-800 mb-3">🔗 ความสัมพันธ์ของตาราง</h4>
+            <ul class="text-sm space-y-2 text-slate-600">
+              <li><code class="text-indigo-600">users</code> <b>1:N</b> → <code>borrow_records</code> (นักเรียนยืมหนังสือได้หลายเล่ม)</li>
+              <li><code class="text-indigo-600">users</code> <b>1:N</b> → <code>room_access_logs</code> (เข้าใช้งานห้องสมุดหลายครั้ง)</li>
+              <li><code class="text-pink-600">books</code> <b>1:N</b> → <code>borrow_records</code> (หนังสือถูกยืมหลายครั้ง)</li>
+              <li><code class="text-purple-600">book_categories</code> <b>1:N</b> → <code>books</code> (ประเภทหนึ่งมีหลายหนังสือ)</li>
+              <li><code class="text-indigo-600">users</code> <b>1:N</b> → <code>borrow_records.handled_by</code> (เจ้าหน้าที่ทำรายการ)</li>
+            </ul>
+          </div>
+          <div class="bg-white p-5 rounded-xl border border-slate-200">
+            <h4 class="font-bold text-slate-800 mb-3">⚠️ Constraint / Logic ที่สำคัญ</h4>
+            <ul class="text-sm space-y-2 text-slate-600">
+              <li>✅ <code>available_copies ≤ total_copies</code> (CHECK)</li>
+              <li>✅ <code>fine_amount ≥ 0</code></li>
+              <li>✅ <code>check_out_at ≥ check_in_at</code></li>
+              <li>✅ Trigger ลด <code>available_copies</code> ตอนยืม / เพิ่ม ตอนคืน</li>
+              <li>✅ <code>mark_overdue_books()</code> อัพเดต overdue ทุกคืน</li>
+              <li>✅ <code>student_id</code>, <code>book_code</code> เป็น UNIQUE</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================== TAB: DATA FLOWS ================== -->
+      <div data-tab-panel="flows" class="tab-panel hidden">
+        <div class="flex flex-wrap gap-2 mb-6">
+          <button onclick="showFlow(1)" class="flow-btn tab-active px-4 py-2 rounded-full text-sm transition font-medium">1️⃣ ยืมหนังสือ</button>
+          <button onclick="showFlow(2)" class="flow-btn px-4 py-2 rounded-full bg-white border border-slate-200 text-slate-700 text-sm transition font-medium hover:bg-slate-50">2️⃣ คืนหนังสือ</button>
+          <button onclick="showFlow(3)" class="flow-btn px-4 py-2 rounded-full bg-white border border-slate-200 text-slate-700 text-sm transition font-medium hover:bg-slate-50">3️⃣ เช็คอินห้องสมุด</button>
+          <button onclick="showFlow(4)" class="flow-btn px-4 py-2 rounded-full bg-white border border-slate-200 text-slate-700 text-sm transition font-medium hover:bg-slate-50">4️⃣ เช็คเอาท์</button>
+          <button onclick="showFlow(5)" class="flow-btn px-4 py-2 rounded-full bg-white border border-slate-200 text-slate-700 text-sm transition font-medium hover:bg-slate-50">🗂️ ทุก Flow (ภาพเดียว)</button>
+        </div>
+
+        <div id="flowContainer">
+          <!-- จะ render ทีละอันตามปุ่ม -->
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-4">
+            <h3 class="font-bold text-lg text-slate-800 mb-1" id="flowTitle">1️⃣ Flow การยืมหนังสือ</h3>
+            <p class="text-sm text-slate-500" id="flowDesc">เจ้าหน้าที่สแกนบัตร + สแกนหนังสือ → บันทึก borrow_records + ลด available_copies</p>
+          </div>
+          <div class="mermaid" id="flowMermaid"></div>
+
+          <!-- Affected tables -->
+          <div class="mt-6 bg-gradient-to-br from-indigo-50 to-white p-5 rounded-2xl border border-indigo-100">
+            <h4 class="font-bold text-indigo-800 mb-3">📊 ตารางที่ถูกอัพเดตใน Flow นี้</h4>
+            <div id="affectedTables" class="flex flex-wrap gap-3"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================== TAB: TABLES ================== -->
+      <div data-tab-panel="tables" class="tab-panel hidden">
+        <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-5" id="tablesGrid"></div>
+      </div>
+
+      <!-- ================== TAB: POLICIES ================== -->
+      <div data-tab-panel="policies" class="tab-panel hidden">
+
+        <!-- Role Strategy -->
+        <div class="grid lg:grid-cols-3 gap-4 mb-6">
+          <div class="bg-white p-5 rounded-2xl border border-slate-200">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="font-bold text-slate-800">🟢 anon (Public)</h4>
+              <span class="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">ไม่ต้อง Login</span>
+            </div>
+            <ul class="text-sm text-slate-600 space-y-1.5">
+              <li>✅ SELECT books, categories</li>
+              <li>✅ INSERT room_access_logs</li>
+              <li>❌ SELECT/INSERT users, borrow_records</li>
+            </ul>
+          </div>
+          <div class="bg-white p-5 rounded-2xl border border-slate-200">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="font-bold text-slate-800">🔵 authenticated</h4>
+              <span class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">Login แล้ว</span>
+            </div>
+            <ul class="text-sm text-slate-600 space-y-1.5">
+              <li>✅ is_admin() → CRUD ทุกอย่าง</li>
+              <li>✅ user ดู/แก้ไข ตัวเองได้</li>
+              <li>✅ ดูประวัติยืม/เช็คอินของตัวเอง</li>
+            </ul>
+          </div>
+          <div class="bg-white p-5 rounded-2xl border border-slate-200">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="font-bold text-slate-800">🔴 service_role</h4>
+              <span class="text-xs px-2 py-1 rounded-full bg-red-100 text-red-700">ฝั่ง Server เท่านั้น</span>
+            </div>
+            <ul class="text-sm text-slate-600 space-y-1.5">
+              <li>✅ ข้าม RLS — ใช้ทำ Transaction</li>
+              <li>⚠️ ห้ามใส่ใน Client Code เด็ดขาด</li>
+              <li>ใช้ใน Next.js Server Action</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Policy per table -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-6">
+          <h3 class="font-bold text-lg text-slate-800 mb-4">🔐 RLS Policy ตามตาราง</h3>
+          <div id="policyList" class="space-y-4"></div>
+        </div>
+
+        <!-- Functions & Triggers -->
+        <div class="grid lg:grid-cols-2 gap-5">
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+            <h3 class="font-bold text-lg text-slate-800 mb-4">⚙️ Helper Functions</h3>
+            <div id="funcList" class="space-y-3"></div>
+          </div>
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+            <h3 class="font-bold text-lg text-slate-800 mb-4">🔧 Triggers &amp; Indexes</h3>
+            <h4 class="font-semibold text-slate-700 text-sm mb-2 mt-1">Triggers</h4>
+            <div id="trigList" class="space-y-2 mb-6"></div>
+            <h4 class="font-semibold text-slate-700 text-sm mb-2">Indexes</h4>
+            <div id="idxList" class="space-y-1.5 text-xs"></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ================== TAB: MARKDOWN ================== -->
+      <div data-tab-panel="markdown" class="tab-panel hidden">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 lg:p-10 relative">
+          <div class="absolute top-6 right-6">
+            <button onclick="navigator.clipboard.writeText(mdContent); alert('📋 คัดลอกโค้ด Markdown ทั้งหมดแล้ว!');" class="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 transition shadow-sm font-semibold">📋 Copy MD</button>
+          </div>
+          <article class="markdown-body" id="markdownArticle"></article>
+        </div>
+      </div>
+
+      <!-- ================== TAB: SQL ================== -->
+      <div data-tab-panel="sql" class="tab-panel hidden">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="flex items-center justify-between px-6 py-3 border-b border-slate-200 bg-slate-50">
+            <div class="flex items-center gap-2 text-sm">
+              <span class="w-3 h-3 rounded-full bg-red-400"></span>
+              <span class="w-3 h-3 rounded-full bg-yellow-400"></span>
+              <span class="w-3 h-3 rounded-full bg-green-400"></span>
+              <span class="ml-3 font-semibold text-slate-700">001_init_schema.sql</span>
+            </div>
+            <button onclick="copySQL()" class="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 transition">📋 Copy SQL</button>
+          </div>
+          <pre style="margin:0;border-radius:0;"><code id="sqlCode" class="language-sql"></code></pre>
+        </div>
+      </div>
+
+      <!-- ================== TAB: EDITOR ================== -->
+      <div data-tab-panel="editor" class="tab-panel hidden">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-5">
+          <div class="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h3 class="font-bold text-lg text-slate-800 mb-1">✏️ Edit Schema บนเว็บ</h3>
+              <p class="text-sm text-slate-500">แก้ไข SQL / MD ได้ตรงๆ ด้านล่าง — กด <b>Preview/Apply</b> ด้านซ้ายเพื่ออัปเดตแท็บอื่นทันที (F5 บนเว็บก็ได้ผลเหมือนกัน)</p>
+            </div>
+            <div id="serverBadge" class="text-xs px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+              Server: <span class="font-semibold" id="svrStatus">checking…</span>
+            </div>
+          </div>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <button onclick="applyFromEditors()" class="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-500 transition">👁️ Preview (Apply to Tabs)</button>
+            <button onclick="downloadFile('md')" class="px-4 py-2 rounded-lg bg-white border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 transition">⬇️ Download SCHEMA_DESIGN.md</button>
+            <button onclick="downloadFile('sql')" class="px-4 py-2 rounded-lg bg-white border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 transition">⬇️ Download 001_init_schema.sql</button>
+            <button onclick="copyFile('md')" class="px-4 py-2 rounded-lg bg-white border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 transition">📋 Copy MD</button>
+            <button onclick="copyFile('sql')" class="px-4 py-2 rounded-lg bg-white border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 transition">📋 Copy SQL</button>
+            <button onclick="resetEditors()" class="px-4 py-2 rounded-lg bg-white border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 transition">↩️ Reset</button>
+            <button onclick="saveEditorsToServer()" id="btnSaveServer" class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-500 transition disabled:opacity-40 disabled:cursor-not-allowed" disabled>💾 Save to Disk (via API)</button>
+          </div>
+          <div id="editorMessage" class="mt-3 text-sm"></div>
+        </div>
+
+        <div class="grid lg:grid-cols-2 gap-5">
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="flex items-center justify-between px-5 py-3 border-b border-slate-200 bg-slate-50">
+              <div class="flex items-center gap-2 text-sm">
+                <span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+                <span class="font-semibold text-slate-700">SCHEMA_DESIGN.md</span>
+              </div>
+              <span class="text-[11px] text-slate-500" id="mdSize">-</span>
+            </div>
+            <textarea id="mdEditor" spellcheck="false"
+              class="w-full h-[600px] p-4 font-mono text-xs text-slate-800 focus:outline-none resize-y"
+              style="tab-size:2;line-height:1.6;"></textarea>
+          </div>
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="flex items-center justify-between px-5 py-3 border-b border-slate-200 bg-slate-50">
+              <div class="flex items-center gap-2 text-sm">
+                <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                <span class="font-semibold text-slate-700">001_init_schema.sql</span>
+              </div>
+              <span class="text-[11px] text-slate-500" id="sqlSize">-</span>
+            </div>
+            <textarea id="sqlEditor" spellcheck="false"
+              class="w-full h-[600px] p-4 font-mono text-xs text-slate-800 focus:outline-none resize-y"
+              style="tab-size:2;line-height:1.6;"></textarea>
+          </div>
+        </div>
+
+        <div class="mt-5 bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <h4 class="font-bold text-slate-800 mb-3">🛠️ Curl Examples (ถ้าเปิดผ่าน <code>python3 server.py</code>)</h4>
+          <div class="grid md:grid-cols-2 gap-3 text-xs">
+            <div class="bg-slate-900 text-slate-100 p-4 rounded-xl overflow-x-auto">
+              <p class="text-slate-400 mb-2"># ดึง SQL ล่าสุด</p>
+              <code>curl http://localhost:8080/api/sql</code>
+            </div>
+            <div class="bg-slate-900 text-slate-100 p-4 rounded-xl overflow-x-auto">
+              <p class="text-slate-400 mb-2"># ดึง MD ล่าสุด</p>
+              <code>curl http://localhost:8080/api/md</code>
+            </div>
+            <div class="bg-slate-900 text-slate-100 p-4 rounded-xl overflow-x-auto md:col-span-2">
+              <p class="text-slate-400 mb-2"># เขียนทับ SQL + MD กลับไปที่ไฟล์บน Disk</p>
+              <code>curl -X POST http://localhost:8080/api/save \
+  -H "Content-Type: application/json" \
+  -d '{"md":"# New MD\n", "sql":"CREATE TABLE ...;\n"}'</code>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <footer class="text-center text-xs text-slate-400 py-6">
+      E-Library Schema Visualizer · ข้อมูลอ้างอิงจาก SCHEMA_DESIGN.md + 001_init_schema.sql
+    </footer>
+  </main>
+</div>
+
+<!-- ========== JAVASCRIPT ========== -->
+<script>
+/* =========================================================
+   STATE
+   ========================================================= */
+const FALLBACK_MD = `# ระบบ E-Library — Schema Design
+> เปิดไฟล์นี้ผ่าน HTTP Server (python3 -m http.server หรือ python3 server.py)
+> หรือใช้ปุ่มโหลดไฟล์ด้านซ้ายมือเพื่อโหลด SCHEMA_DESIGN.md + 001_init_schema.sql
+`;
+
+const FALLBACK_SQL = `-- fallback SQL — โหลดจริงไม่ได้, เปิดผ่าน http server หรือใช้ปุ่มโหลดไฟล์ด้านซ้าย
+-- คำแนะนำ: cd supabase/migrations && python3 server.py
+`;
+
+let mdContent = '';
+let sqlContent = '';
+let activeTab = 'overview';
+let originalMd = '';
+let originalSql = '';
+let hasServer = false;
+let cachedTables = null;
+let cachedMDMeta = null;
+
+/* =========================================================
+   INIT
+   ========================================================= */
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'default',
+  flowchart: { curve: 'basis', useMaxWidth: true, htmlLabels: true },
+  er: { useMaxWidth: true },
+  securityLevel: 'loose',
+  themeVariables: {
+    primaryColor: '#eef2ff',
+    primaryTextColor: '#1e1b4b',
+    primaryBorderColor: '#6366f1',
+    lineColor: '#6366f1',
+    fontSize: '14px',
+  }
+});
+
+/* =========================================================
+   TABLE STYLE MAP — ใส่ icon + color ให้แต่ละตาราง
+   (auto-fallback ถ้าชื่อตารางไม่อยู่ใน list นี้)
+   ========================================================= */
+const TABLE_STYLES = {
+  users:              { icon:'👤', accent:'from-blue-500 to-indigo-600'   },
+  book_categories:    { icon:'🏷️', accent:'from-purple-500 to-fuchsia-600'},
+  books:              { icon:'📖', accent:'from-pink-500 to-rose-600'     },
+  borrow_records:     { icon:'📝', accent:'from-emerald-500 to-green-600' },
+  room_access_logs:   { icon:'🚪', accent:'from-amber-500 to-orange-600'  },
+};
+const DEFAULT_STYLE  = { icon:'🗃️', accent:'from-slate-500 to-gray-600'   };
+const CHIP_COLORS = ['bg-blue-100 text-blue-700','bg-pink-100 text-pink-700','bg-purple-100 text-purple-700','bg-emerald-100 text-emerald-700','bg-amber-100 text-amber-700','bg-cyan-100 text-cyan-700','bg-rose-100 text-rose-700','bg-indigo-100 text-indigo-700'];
+
+/* =========================================================
+   MD PARSER — Extract คำอธิบายตาราง + คอลัมน์ จาก SCHEMA_DESIGN.md
+   return: {
+     tables: { users: { desc: 'นักเรียน', cols: { id: 'PK...', student_id: '...' } } }
+   }
+   ========================================================= */
+function parseMDDescriptions(md){
+  const result = { tables: {} };
+  if(!md) return result;
+  const sectionRe = /^###\s+\d+\.\s+`?(\w+)`?(?:\s*—\s*([^\n]+))?[ \t]*\n([\s\S]*?)(?=^###\s+\d+\.|\n##\s|\n---\n|$)/gim;
+  let m;
+  while((m = sectionRe.exec(md)) !== null){
+    const tname = m[1];
+    const tdesc = (m[2]||'').trim();
+    const body = m[3];
+    const entry = { desc: tdesc, cols: {} };
+    const rowRe = /^\|\s*`?(\w+)`?\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|/gim;
+    let rm;
+    while((rm = rowRe.exec(body)) !== null){
+      if(rm[1].toLowerCase()==='คอลัมน์' || rm[1].includes('---')) continue;
+      entry.cols[rm[1]] = rm[3].replace(/\*\*/g,'').trim();
+    }
+    result.tables[tname] = entry;
+  }
+  return result;
+}
+
+/* =========================================================
+   SQL PARSER — Parse SQL ให้กลายเป็น JS Object
+   ========================================================= */
+
+/**
+ * แยกเนื้อหาภายใน CREATE TABLE (...) ให้เป็นบรรทัดของแต่ละคอลัมน์/constraint
+ *  - จัดการกับ paren depth (DEFAULT gen_random_uuid(), CHECK (x > 0), ฯลฯ)
+ *  - จัดการกับ single quote (escape '')
+ */
+function splitSQLColumns(raw) {
+  const lines = [];
+  let depth = 0, buf = '', inStr = false;
+  for(let i=0; i<raw.length; i++){
+    const c = raw[i];
+    if(c==="'" && raw[i-1]!=="'") { inStr = !inStr; }
+    if(!inStr){
+      if(c==='(') depth++;
+      if(c===')') {
+        if(depth===0) break;
+        depth--;
+      }
+      if(c===',' && depth===0){ lines.push(buf.trim()); buf=''; continue; }
+    }
+    buf += c;
+  }
+  if(buf.trim()) lines.push(buf.trim());
+  return lines;
+}
+
+/**
+ * Parse COMMENT ON statements (ถ้ามีใน SQL เช่น COMMENT ON COLUMN users.id IS '...')
+ */
+function parseSQLComments(sql){
+  const out = { tables: {}, cols: {} };
+  const colRe = /COMMENT\s+ON\s+COLUMN\s+(?:public\.)?(\w+)\.(\w+)\s+IS\s+'((?:[^']|'')*)'/gi;
+  const tblRe = /COMMENT\s+ON\s+TABLE\s+(?:public\.)?(\w+)\s+IS\s+'((?:[^']|'')*)'/gi;
+  let m;
+  while((m = tblRe.exec(sql)) !== null) out.tables[m[1]] = m[2].replace(/''/g,"'");
+  while((m = colRe.exec(sql)) !== null) out.cols[`${m[1]}.${m[2]}`] = m[2].replace(/''/g,"'");
+  return out;
+}
+
+/**
+ * Parse tables จาก SQL + ผสาน descriptions จาก MD + SQL comments
+ * + ระบุ ON DELETE action, RLS enabled flag, CHECK constraints list
+ */
+function parseAllTablesFromSQL(sql, md){
+  const mdMeta = parseMDDescriptions(md||'');
+  const sqlComments = parseSQLComments(sql||'');
+  cachedMDMeta = mdMeta;
+  const rlsEnabled = new Set();
+  const rlsRe = /ALTER\s+TABLE\s+(?:public\.)?(\w+)\s+ENABLE\s+ROW\s+LEVEL\s+SECURITY/gi;
+  let rm; while((rm = rlsRe.exec(sql)) !== null) rlsEnabled.add(rm[1]);
+
+  const tables = [];
+  const tableRegex = /CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+|CREATE\s+TABLE\s+/gi;
+  const bodyRegex = /^\s*public\.(\w+)\s*\(([\s\S]*?)\)\s*(?:TABLESPACE\s+\w+)?\s*;/i;
+  let tm;
+  while((tm = tableRegex.exec(sql)) !== null){
+    const rest = sql.slice(tm.index + tm[0].length);
+    const bm = rest.match(bodyRegex);
+    if(!bm) continue;
+    const tableName = bm[1];
+    const rawBody = bm[2];
+    const rows = splitSQLColumns(rawBody);
+    const cols = [];
+    const constraints = [];
+    const checks = [];
+    for(const r of rows){
+      if(/^(CONSTRAINT\s+\w+\s+)?(PRIMARY\s+KEY\b|FOREIGN\s+KEY\b|UNIQUE\b|CHECK\b)/i.test(r)){
+        constraints.push(r.trim());
+        if(/^CHECK\b/i.test(r) || /CONSTRAINT\s+\w+\s+CHECK\b/i.test(r)) checks.push(r.trim());
+        continue;
+      }
+      const colMatch = r.match(/^"?(\w+)"?\s+([\w(),\s]+?)(?:\s+(.*))?$/i);
+      if(!colMatch) continue;
+      const [, name, type, rest=''] = colMatch;
+      const modifiers = [];
+      if(/\bPRIMARY\s+KEY\b/i.test(r)) modifiers.push('PK');
+      let fkTarget = null;
+      const rf = r.match(/REFERENCES\s+(?:public\.)?(\w+)\s*\(\s*"?(\w+)"?\s*\)/i);
+      if(rf){
+        fkTarget = { table: rf[1], col: rf[2] };
+        modifiers.push(`FK → ${rf[1]}.${rf[2]}`);
+        const delAct = r.match(/ON\s+DELETE\s+(CASCADE|SET\s+NULL|SET\s+DEFAULT|RESTRICT|NO\s+ACTION)/i);
+        if(delAct) modifiers.push(`ON DELETE ${delAct[1].toUpperCase()}`);
+      }
+      if(/\bNOT\s+NULL\b/i.test(r)) modifiers.push('NOT NULL');
+      const inlineUnique = r.replace(/UNIQUE\s*\([^)]*\)/gi,'');
+      if(/\bUNIQUE\b/i.test(inlineUnique)) modifiers.push('UNIQUE');
+      if(/\bDEFAULT\b/i.test(r)){
+        const d = r.match(/DEFAULT\s+([\s\S]*?)(?:\s+NOT\s+NULL|\s+CHECK\b|\s+PRIMARY\b|\s+REFERENCES\b|\s+UNIQUE\b|$)/i);
+        if(d){
+          let v = d[1].trim().replace(/[;,]\s*$/,'').replace(/\s+ON\s+(DELETE|UPDATE).*$/i,'').trim();
+          modifiers.push(`DEFAULT ${v}`);
+        }
+      }
+      const ck = r.match(/\bCHECK\s*\(([\s\S]+)\)\s*$/i);
+      if(ck){ checks.push(`CHECK (${ck[1].trim()})`); modifiers.push(`CHECK (${ck[1].trim()})`); }
+      let desc = '';
+      if(mdMeta.tables[tableName]?.cols[name]) desc = mdMeta.tables[tableName].cols[name];
+      if(sqlComments.cols[`${tableName}.${name}`]) desc = sqlComments.cols[`${tableName}.${name}`];
+      cols.push({
+        name, type: type.trim().toLowerCase(),
+        modifiers, note: modifiers.join(' · '),
+        fk: fkTarget, desc,
+        raw: r.trim(),
+      });
+    }
+    for(const c of constraints){
+      const uq = c.match(/UNIQUE\s*\(\s*"?(\w+)"?\s*\)/i);
+      if(uq){
+        const col = cols.find(x=>x.name===uq[1]);
+        if(col && !col.modifiers.includes('UNIQUE')){ col.modifiers.push('UNIQUE'); col.note = col.modifiers.join(' · '); }
+      }
+      const muq = c.match(/UNIQUE\s*\(\s*([^)]+)\s*\)/i);
+      if(muq && !uq){
+        const parts = muq[1].split(',').map(s=>s.trim().replace(/^"|"$/g,''));
+        for(const p of parts){
+          const col = cols.find(x=>x.name===p);
+          if(col && !col.modifiers.some(m=>m.startsWith('UNIQUE'))){
+            col.modifiers.push(`UNIQUE (${parts.join(', ')})`);
+            col.note = col.modifiers.join(' · ');
+          }
+        }
+      }
+      const pk = c.match(/PRIMARY\s+KEY\s*\(\s*"?(\w+)"?\s*\)/i);
+      if(pk){
+        const col = cols.find(x=>x.name===pk[1]);
+        if(col && !col.modifiers.includes('PK')){ col.modifiers.unshift('PK'); col.note = col.modifiers.join(' · '); }
+      }
+      const fk = c.match(/FOREIGN\s+KEY\s*\(\s*"?(\w+)"?\s*\)\s*REFERENCES\s+(?:public\.)?(\w+)\s*\(\s*"?(\w+)"?\s*\)/i);
+      if(fk){
+        const col = cols.find(x=>x.name===fk[1]);
+        if(col){
+          const note = `FK → ${fk[2]}.${fk[3]}`;
+          if(!col.modifiers.includes(note)){ col.modifiers.push(note); col.note = col.modifiers.join(' · '); }
+          col.fk = { table: fk[2], col: fk[3] };
+          const delAct = c.match(/ON\s+DELETE\s+(CASCADE|SET\s+NULL|SET\s+DEFAULT|RESTRICT|NO\s+ACTION)/i);
+          if(delAct && !col.modifiers.some(m=>m.startsWith('ON DELETE'))){
+            col.modifiers.push(`ON DELETE ${delAct[1].toUpperCase()}`);
+            col.note = col.modifiers.join(' · ');
+          }
+        }
+      }
+      const cchk = c.match(/(?:CONSTRAINT\s+\w+\s+)?CHECK\s*\(([\s\S]+)\)/i);
+      if(cchk) checks.push(`CONSTRAINT CHECK (${cchk[1].trim()})`);
+    }
+    const style = TABLE_STYLES[tableName] || DEFAULT_STYLE;
+    let desc = style.desc || mdMeta.tables[tableName]?.desc || sqlComments.tables[tableName] || 'ตารางข้อมูล';
+    if(mdMeta.tables[tableName]?.desc) desc = mdMeta.tables[tableName].desc;
+    if(sqlComments.tables[tableName]) desc = sqlComments.tables[tableName];
+    tables.push({
+      name: tableName,
+      icon: style.icon,
+      accent: style.accent,
+      desc,
+      cols,
+      constraints,
+      checks,
+      rls: rlsEnabled.has(tableName),
+    });
+  }
+  cachedTables = tables;
+  return tables;
+}
+
+function getTables(){
+  if(cachedTables) return cachedTables;
+  return parseAllTablesFromSQL(sqlContent, mdContent);
+}
+
+/**
+ * สร้าง Mermaid ER Diagram จาก parsed tables
+ *  — รวม comment description จาก MD ลงใน column definition ใต้ quote ""
+ *  — แยก relationship label ตามชื่อ foreign key
+ */
+function generateMermaidER(tables){
+  function _q(s){ return String(s==null?'':s).replace(/"/g,"'").replace(/\s+/g,' ').trim(); }
+  function _safeType(type){
+    let t = String(type||'').toLowerCase().trim();
+    if(!t) return 'text';
+    t = t.replace(/\([^)]*\)/g, '');
+    t = t.replace(/\s+(varying|precision|without time zone|with time zone)/g, '');
+    const map = {
+      'character':'char', 'char':'char', 'varchar':'varchar', 'text':'text',
+      'integer':'int', 'int':'int', 'int4':'int', 'int8':'bigint', 'serial':'int',
+      'bigint':'bigint', 'bigserial':'bigint', 'smallint':'smallint',
+      'numeric':'numeric', 'decimal':'decimal', 'real':'real',
+      'float':'float', 'float4':'float', 'float8':'float', 'double':'float',
+      'boolean':'boolean', 'bool':'boolean',
+      'date':'date', 'time':'time', 'timestamp':'timestamp',
+      'timetz':'timetz', 'timestamptz':'timestamptz',
+      'uuid':'uuid', 'json':'json', 'jsonb':'jsonb',
+      'bytea':'bytea', 'inet':'inet',
+    };
+    return map[t] || (t.length>0 && t.length<=16 && /^[a-z]+$/.test(t) ? t : 'text');
+  }
+  const rels = [];
+  const seen = new Set();
+  for(const t of tables){
+    for(const c of t.cols){
+      if(c.fk){
+        const key = [t.name, c.fk.table, c.name].sort().join('|');
+        if(seen.has(key)) continue;
+        seen.add(key);
+        const onDel = c.modifiers.find(m=>m.startsWith('ON DELETE'));
+        const rawLabel = `${c.name}${onDel ? ` [${onDel.replace('ON DELETE ','')}]` : ''}`;
+        rels.push(`${c.fk.table.toUpperCase()} ||--o{ ${t.name.toUpperCase()} : "${_q(rawLabel)}"`);
+      }
+    }
+  }
+  const body = tables.map(t=>{
+    const inner = t.cols.map(c=>{
+      const pk = c.modifiers.includes('PK') ? ' PK' : '';
+      const fk = c.fk ? ' FK' : '';
+      const stype = _safeType(c.type);
+      const desc = c.desc ? ` "${_q(c.desc.slice(0,80))}"` : '';
+      return `    ${stype} ${c.name}${pk}${fk}${desc}`;
+    }).join('\n');
+    const tblDescComment = (t.desc && t.desc !== 'ตารางข้อมูล')
+      ? `  %% ${_q(t.desc.slice(0,80))}\n` : '';
+    return `${tblDescComment}  ${t.name.toUpperCase()} {\n${inner}\n  }`;
+  }).join('\n');
+  return `erDiagram\n${rels.join('\n')}\n\n${body}`;
+}
+
+/* =========================================================
+   MD AUTO-UPDATER — Sync ER Diagram block + Tables section ใน MD
+   ========================================================= */
+function generateAutoMD(tables, mdOriginal){
+  let md = mdOriginal || mdContent || FALLBACK_MD;
+  const erBlock = generateMermaidER(tables);
+  const erRe = /```mermaid\s*\nerDiagram[\s\S]*?```/i;
+  if(erRe.test(md)) md = md.replace(erRe, '```mermaid\n' + erBlock + '\n```');
+  const tablesSectionStart = md.indexOf('## 📋 รายละเอียดแต่ละตาราง');
+  const flowSectionMatch = md.match(/^##\s+.*Data\s+Flow/im);
+  const tablesSectionEnd = flowSectionMatch ? flowSectionMatch.index : md.length;
+  if(tablesSectionStart >= 0){
+    const header = '## 📋 รายละเอียดแต่ละตาราง\n\n';
+    const rendered = tables.map((t,i) => {
+      const rows = t.cols.map(c => {
+        const notePart = (c.note ? c.note : '') + (c.desc ? (c.note ? ' — ' : '') + c.desc : '');
+        return `| \`${c.name}\` | ${c.type} | ${notePart || '-'} |`;
+      }).join('\n');
+      return `### ${i+1}. \`${t.name}\` — ${t.desc}\n| คอลัมน์ | Type | หมายเหตุ |\n|---------|------|----------|\n${rows}\n`;
+    }).join('\n');
+    const tail = '\n---\n\n';
+    md = md.slice(0, tablesSectionStart) + header + rendered + tail + md.slice(tablesSectionEnd);
+  }
+  return md;
+}
+
+/* =========================================================
+   API DETECT & CALLS
+   ========================================================= */
+async function detectServer(){
+  try {
+    const r = await fetch('./api/ping', { cache:'no-store' });
+    hasServer = (await r.text()).includes('pong');
+  } catch(e) { hasServer = false; }
+  const sv = document.getElementById('svrStatus');
+  if(sv){
+    if(hasServer){ sv.textContent = '✅ online'; sv.className='font-semibold text-emerald-600'; }
+    else { sv.textContent = '❌ offline'; sv.className='font-semibold text-rose-600'; }
+    const btn = document.getElementById('btnSaveServer');
+    if(btn) btn.disabled = !hasServer;
+  }
+}
+
+async function saveToServer({md, sql}){
+  const r = await fetch('./api/save', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ md, sql })
+  });
+  return r.ok ? await r.json() : { ok:false, error:r.statusText };
+}
+
+async function refreshSources(){
+  cachedTables = null; cachedMDMeta = null;
+  const promises = [];
+  if(hasServer){
+    promises.push(
+      fetch('./api/md',{cache:'no-store'}).then(r=>r.ok?r.text():Promise.reject()).then(t=>{mdContent=t;},()=>{}),
+      fetch('./api/sql',{cache:'no-store'}).then(r=>r.ok?r.text():Promise.reject()).then(t=>{sqlContent=t;},()=>{}),
+    );
+  } else {
+    promises.push(
+      fetch('./SCHEMA_DESIGN.md',{cache:'no-store'}).then(r=>r.ok?r.text():Promise.reject()).then(t=>{mdContent=t;},()=>{}),
+      fetch('./001_init_schema.sql',{cache:'no-store'}).then(r=>r.ok?r.text():Promise.reject()).then(t=>{sqlContent=t;},()=>{}),
+    );
+  }
+  await Promise.all(promises);
+  if(!mdContent) mdContent = FALLBACK_MD;
+  if(!sqlContent) sqlContent = FALLBACK_SQL;
+  originalMd = mdContent; originalSql = sqlContent;
+  updateStatusBadges();
+  renderAll();
+  switchTab(activeTab);
+  showEditorMessage('🔄 โหลดจากไฟล์ดิสก์สำเร็จ (F5)','text-emerald-700 bg-emerald-50 border-emerald-200');
+}
+
+/* =========================================================
+   BOOTSTRAP
+   ========================================================= */
+window.addEventListener('DOMContentLoaded', async () => {
+  await detectServer();
+  const [mdOk, sqlOk] = await Promise.all([
+    (async () => {
+      try {
+        const r = await fetch('./SCHEMA_DESIGN.md', { cache:'no-store' });
+        if(r.ok){ mdContent = await r.text(); return true; }
+      } catch(e){}
+      mdContent = FALLBACK_MD; return false;
+    })(),
+    (async () => {
+      try {
+        const r = await fetch('./001_init_schema.sql', { cache:'no-store' });
+        if(r.ok){ sqlContent = await r.text(); return true; }
+      } catch(e){}
+      sqlContent = FALLBACK_SQL; return false;
+    })(),
+  ]);
+  originalMd = mdContent; originalSql = sqlContent;
+  updateStatusBadges();
+  renderAll();
+  switchTab('overview');
+});
+
+function updateStatusBadges() {
+  const md = document.getElementById('mdStatus').querySelector('span');
+  const sq = document.getElementById('sqlStatus').querySelector('span');
+  const mdLoaded = mdContent && mdContent.length > 200 && mdContent !== FALLBACK_MD;
+  const sqlLoaded = sqlContent && sqlContent.length > 200 && sqlContent !== FALLBACK_SQL;
+  md.textContent = mdLoaded ? '✅ loaded' : '⚠️ fallback';
+  md.className = 'font-semibold ' + (mdLoaded ? 'text-emerald-600' : 'text-amber-600');
+  sq.textContent = sqlLoaded ? '✅ loaded' : '⚠️ fallback';
+  sq.className = 'font-semibold ' + (sqlLoaded ? 'text-emerald-600' : 'text-amber-600');
+}
+
+/* =========================================================
+   FILE PICKER
+   ========================================================= */
+function loadFile(e, which){
+  const f = e.target.files[0]; if(!f) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    if(which==='md') mdContent = reader.result;
+    else sqlContent = reader.result;
+    cachedTables = null;
+    updateStatusBadges();
+    renderAll();
+    switchTab(activeTab);
+  };
+  reader.readAsText(f);
+}
+
+/* =========================================================
+   TAB SWITCHER
+   ========================================================= */
+function switchTab(name){
+  activeTab = name;
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.add('hidden'));
+  document.querySelectorAll('[data-tab-panel]').forEach(p=>{
+    if(p.dataset.tabPanel===name) p.classList.remove('hidden');
+  });
+  document.querySelectorAll('.tab-link').forEach(a=>{
+    if(a.dataset.tab===name){ a.classList.add('tab-active'); a.classList.remove('text-slate-300','hover:bg-slate-800'); }
+    else { a.classList.remove('tab-active'); a.classList.add('text-slate-300','hover:bg-slate-800');}
+  });
+  const titles={overview:'🏠 ภาพรวมระบบ', er:'🗄️ ER Diagram', flows:'🔄 Data Flow การทำงาน', tables:'📋 Tables & คอลัมน์', policies:'🔐 RLS Policies, Triggers, Functions', markdown:'📝 SCHEMA_DESIGN.md', sql:'💾 001_init_schema.sql', editor:'✏️ Edit Schema & Export'};
+  document.getElementById('pageTitle').textContent = titles[name]||name;
+  if(name==='markdown') renderMarkdown();
+  if(name==='sql'){ document.getElementById('sqlCode').textContent = sqlContent; if(typeof hljs !== 'undefined'){ try { hljs.highlightElement(document.getElementById('sqlCode')); } catch(e){} } }
+  if(name==='editor') renderEditors();
+}
+
+function copySQL(){
+  navigator.clipboard.writeText(sqlContent);
+  const b = event.target; const old = b.textContent;
+  b.textContent='✅ Copied!'; setTimeout(()=>b.textContent=old, 1500);
+}
+
+/* =========================================================
+   MERMAID RENDER
+   ========================================================= */
+async function renderMermaid(targetId, source){
+  const el = document.getElementById(targetId);
+  if(!el) return;
+  el.innerHTML = '';
+  try{
+    const { svg } = await mermaid.render('mmd_' + Math.random().toString(36).slice(2,8), source);
+    el.innerHTML = svg;
+  } catch (e) {
+    el.innerHTML = `<div class="text-red-600 p-4 text-sm">❌ Diagram render error: ${escapeHtml(e.message || String(e))}</div><pre class="text-xs overflow-auto text-slate-500 p-2 border border-slate-200 rounded">${escapeHtml(source)}</pre>`;
+  }
+}
+
+/* =========================================================
+   RENDER ALL SECTIONS
+   ========================================================= */
+function renderAll(){
+  renderOverview();
+  renderER();
+  renderTables();
+  renderPolicies();
+  renderEditors();
+  showFlow(1);
+}
+
+/* -------- OVERVIEW -------- */
+function renderOverview(){
+  const bp = document.getElementById('bpMatrix');
+  const data = [
+    ['ค้นหาหนังสือ public','anon + books_select_public','เรียบง่าย ไม่ต้อง login'],
+    ['หน้าเช็คอิน (สแกนบัตรหน้าห้อง)','anon + access_logs_anon_can_insert','Tablet หน้าห้องสมุดไม่มีใคร login'],
+    ['ลงทะเบียนยืมหนังสือ','🔐 Next.js Server Action + service_role','ต้อง INSERT borrow_records + UPDATE books พร้อมกัน (Transaction)'],
+    ['คืนหนังสือ/ต่ออายุ/แจ้งสูญ','🔐 Server Action + service_role','ต้องคำนวนค่าปรับ, อัพเดตหลายอย่าง'],
+    ['Dashboard ดูรายงาน','Admin login + is_admin()','ดึงข้อมูลฝั่ง Client ได้เลย'],
+    ['เพิ่ม/แก้ไข/ลบ หนังสือ, User','Admin login + is_admin()','ทำผ่าน Supabase Client ปกติ'],
+  ];
+  bp.innerHTML = data.map(r=>`<tr><td class="p-3 font-medium text-slate-700">${r[0]}</td><td class="p-3"><code class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded-md text-xs">${r[1]}</code></td><td class="p-3 text-slate-600">${r[2]}</td></tr>`).join('');
+
+  const tables = getTables();
+  const cntTables = tables.length;
+  document.getElementById('cntTables').textContent = cntTables;
+  const chipsEl = document.getElementById('tableChips');
+  if(chipsEl){
+    chipsEl.innerHTML = tables.map((t,i)=>{
+      const c = CHIP_COLORS[i % CHIP_COLORS.length];
+      return `<span class="px-2.5 py-1 rounded-full ${c} text-xs font-medium">${t.icon} ${t.name}</span>`;
+    }).join('') || '<span class="text-xs text-slate-400">ยังไม่พบตาราง</span>';
+  }
+
+  const cntPolicy = (sqlContent.match(/CREATE\s+POLICY/gi)||[]).length;
+  const cntTrigger= (sqlContent.match(/CREATE\s+TRIGGER/gi)||[]).length;
+  const cntFunc   = (sqlContent.match(/CREATE\s+(OR\s+REPLACE\s+)?FUNCTION/gi)||[]).length;
+  const cntIndex  = (sqlContent.match(/CREATE\s+(UNIQUE\s+)?INDEX/gi)||[]).length;
+  document.getElementById('cntPolicy').textContent = cntPolicy;
+  document.getElementById('cntTrigger').textContent = (cntTrigger + cntFunc);
+  document.getElementById('cntIndex').textContent = cntIndex;
+  document.getElementById('countSummary').textContent = (cntPolicy + cntTrigger + cntFunc + cntIndex) + ' รายการ';
+}
+
+/* -------- ER DIAGRAM — PRIORITY: 1) SQL auto-gen (merged MD comments)  2) MD mermaid block fallback -------- */
+function renderER(){
+  const tables = getTables();
+  let src = generateMermaidER(tables);
+  if(!src || tables.length === 0){
+    const match = mdContent.match(/```mermaid[\s\S]*?erDiagram[\s\S]*?```/i);
+    if(match) src = match[0].replace(/^```mermaid\n/i,'').replace(/```$/,'').trim();
+  }
+  if(src) renderMermaid('erMermaid', src);
+}
+
+/* -------- DATA FLOW (hardcoded business flows — ยังคงไว้ เพราะไม่ได้มาจาก SQL) -------- */
+const FLOWS = [
+  null,
+  {
+    id:1, title:'1️⃣ Flow การยืมหนังสือ', desc:'เจ้าหน้าที่สแกนบัตรนักเรียน → สแกนรหัสหนังสือ → ยืนยัน → บันทึกการยืม + ลดจำนวนเล่มว่าง',
+    tables:['users (SELECT)','books (SELECT + UPDATE)','borrow_records (INSERT)'],
+    mermaid:
+`flowchart TD
+    A["👨‍🏫 เจ้าหน้าที่ (Login Admin)"] --> B["สแกนรหัสนักเรียน student_id"]
+    B --> C{"พบข้อมูลนักเรียนหรือไม่"}
+    C -->|"❌ ไม่พบ"| Cx["แจ้งเตือน ไม่พบรหัสนักเรียน"]
+    C -->|"✅ พบ"| D["สแกนรหัสหนังสือ book_code"]
+    D --> E{"หนังสือพร้อมยืมหรือไม่<br/>available มากกว่า 0<br/>สถานะ active"}
+    E -->|"❌ ไม่ผ่าน"| Ex["แจ้งหนังสือยังไม่พร้อม"]
+    E -->|"✅ ผ่าน"| F["กดยืนยันยืม<br/>Server Action + service_role"]
+    F --> G["🔒 BEGIN Transaction"]
+    G --> H["INSERT ลง borrow_records<br/>สถานะ = borrowing<br/>due_date = เพิ่ม 7 วัน"]
+    H --> I["UPDATE books<br/>available_copies ลดลง 1 เล่ม"]
+    I --> J["✔️ COMMIT"]
+    J --> K["✅ แสดงใบยืม<br/>ชื่อผู้ยืม / หนังสือ / กำหนดคืน"]
+    classDef admin fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e,stroke-width:2px
+    classDef server fill:#fef3c7,stroke:#d97706,color:#92400e,stroke-width:2px
+    classDef trans fill:#f3e8ff,stroke:#9333ea,color:#581c87,stroke-width:2px
+    classDef done fill:#dcfce7,stroke:#16a34a,color:#166534,stroke-width:2px
+    class A admin
+    class F,I,H server
+    class G,J trans
+    class K,Cx,Ex done`
+  },
+  {
+    id:2, title:'2️⃣ Flow การคืนหนังสือ', desc:'สแกน book_code → หา record ยืมที่ค้าง → คำนวนค่าปรับถ้าล่าช้า → บันทึกคืน + คืนเล่ม',
+    tables:['borrow_records (SELECT + UPDATE)','books (UPDATE)','users (SELECT)'],
+    mermaid:
+`flowchart TD
+    A["👨‍🏫 เจ้าหน้าที่"] --> B["สแกนรหัสหนังสือ book_code"]
+    B --> C{"พบรายการยืมที่ค้างอยู่หรือไม่"}
+    C -->|"❌ ไม่พบ"| Cx["หนังสือเล่มนี้ไม่ได้ถูกยืม"]
+    C -->|"✅ พบ"| D["แสดงรายการยืม<br/>ชื่อผู้ยืม / วันยืม / กำหนดคืน"]
+    D --> E{"เลยกำหนดคืนหรือไม่"}
+    E -->|"✅ ใช่ ล่าช้า"| F["คำนวนค่าปรับ<br/>ค่าปรับ = จำนวนวันล่าช้า × 1 บาท"]
+    E -->|"❌ ไม่ล่าช้า"| G["ค่าปรับ = 0 บาท"]
+    F --> H["กดยืนยันคืน"]
+    G --> H
+    H --> I["🔐 Server Action / Transaction"]
+    I --> J["UPDATE borrow_records<br/>วันที่คืน = ปัจจุบัน<br/>สถานะ = returned<br/>บันทึกค่าปรับ"]
+    J --> K["UPDATE books<br/>available_copies เพิ่มขึ้น 1 เล่ม"]
+    K --> L["✅ คืนสำเร็จ<br/>ถ้ามีค่าปรับ แจ้งให้เก็บเงิน"]
+    classDef admin fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e,stroke-width:2px
+    classDef server fill:#fef3c7,stroke:#d97706,color:#92400e,stroke-width:2px
+    classDef done fill:#dcfce7,stroke:#16a34a,color:#166534,stroke-width:2px
+    class A admin
+    class I,J,K server
+    class L,Cx done`
+  },
+  {
+    id:3, title:'3️⃣ Flow เช็คอินเข้าใช้งานห้องสมุด', desc:'นักเรียนสแกนบัตรที่หน้าห้อง → ระบบค้นหา + เช็คลืมเช็คเอาท์รอบก่อน → บันทึกการเข้า',
+    tables:['users (SELECT)','room_access_logs (SELECT + INSERT + UPDATE)'],
+    mermaid:
+`flowchart TD
+    A["👤 นักเรียน หรือ ครู"] --> B["📱 สแกนบัตร ที่หน้าห้องสมุด"]
+    B --> C{"พบรหัสในระบบหรือไม่"}
+    C -->|"❌ ไม่พบรหัส"| Cx["❌ ไม่พบ ผู้ใช้ โทรเรียกเจ้าหน้าที่"]
+    C -->|"✅ พบ"| D{"มีรายการเช็คอินค้างอยู่หรือไม่"}
+    D -->|"✅ มี (ลืมเช็คเอาท์รอบก่อน)"| E["🛠️ Auto เช็คเอาท์รอบเก่า<br/>อัพเดต check_out_at = ปัจจุบัน"]
+    E --> F["INSERT room_access_logs<br/>เช็คอินเวลาปัจจุบัน"]
+    D -->|"❌ ไม่มี"| F
+    F --> G["✅ ต้อนรับเข้าใช้งาน<br/>แสดงชื่อ + เวลาเข้า + รูป"]
+    classDef user fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e,stroke-width:2px
+    classDef fix fill:#fef3c7,stroke:#d97706,color:#92400e,stroke-width:2px
+    classDef done fill:#dcfce7,stroke:#16a34a,color:#166534,stroke-width:2px
+    class A user
+    class E fix
+    class G,Cx done`
+  },
+  {
+    id:4, title:'4️⃣ Flow เช็คเอาท์ / ออกจากห้อง', desc:'กดปุ่มเช็คเอาท์ หรือระบบ Auto ตอนปิดห้อง 17:00',
+    tables:['room_access_logs (SELECT + UPDATE)'],
+    mermaid:
+`flowchart TD
+    A["👤 กดปุ่มเช็คเอาท์<br/>หรือ ระบบ Auto เวลา 17:00 น."] --> B{"พบรายการเช็คอินค้างของ user หรือไม่"}
+    B -->|"❌ ไม่พบ"| C["⚠️ ไม่มีรายการเช็คอินค้างอยู่"]
+    B -->|"✅ พบ 1 รายการ"| D["🛠️ UPDATE log นั้น<br/>เช็คเอาท์เวลา = ปัจจุบัน"]
+    D --> E["✅ สำเร็จ<br/>คำนวนเวลาอยู่ในห้อง ไว้ทำสถิติ"]
+    classDef user fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e,stroke-width:2px
+    classDef fix fill:#fef3c7,stroke:#d97706,color:#92400e,stroke-width:2px
+    classDef done fill:#dcfce7,stroke:#16a34a,color:#166534,stroke-width:2px
+    class A user
+    class D fix
+    class E,C done`
+  },
+  {
+    id:5, title:'🗂️ ทุก Flow รวมภาพเดียว', desc:'ภาพรวมข้อมูลไหลยังไง ตีกรอบสีตามโมดูล',
+    tables:['users','books','book_categories','borrow_records','room_access_logs'],
+    mermaid:
+`flowchart LR
+    subgraph ADMIN ["📌 โมดูลที่ 1 · ระบบยืม-คืนหนังสือ — เจ้าหน้าที่เท่านั้น"]
+        direction LR
+        A1["สแกนบัตรนักเรียน"] --> U1["🔍 ค้นหา users"]
+        A2["สแกนหนังสือ"] --> B1["🔍 ค้นหา books"]
+        U1 --> B2["✔️ ยืนยันยืม<br/>Server + service_role"]
+        B1 --> B2
+        B2 --> BR1["🗄️ borrow_records<br/>เพิ่มรายการยืม"]
+        B2 --> BU["🗄️ books UPDATE<br/>available ลดลง"]
+        A3["คืนหนังสือ"] --> BR2["🔍 borrow_records<br/>ค้นรายการที่ยังไม่คืน"]
+        BR2 --> CALC["🧮 คำนวน ล่าช้า และ ค่าปรับ"]
+        CALC --> RET["🔒 Server Transaction"]
+        RET --> BRU["🗄️ borrow_records UPDATE<br/>บันทึกคืนจริง"]
+        RET --> BU2["🗄️ books UPDATE<br/>available เพิ่มขึ้น"]
+    end
+    subgraph PUBLIC ["📌 โมดูลที่ 2 · เช็คอินห้องสมุด — Public สแกนบัตรได้เลย"]
+        direction LR
+        C1["📱 สแกนบัตร หน้าห้องสมุด"] --> UC["🔍 users SELECT ตามรหัส"]
+        UC --> PREV{"มี log เช็คอินค้างหรือไม่"}
+        PREV -->|"✔️ ใช่"| FIX["🛠️ room_access_logs UPDATE<br/>เช็คเอาท์อันเก่าให้ก่อน"]
+        PREV -->|"❌ ไม่มี"| INS
+        FIX --> INS["🗄️ room_access_logs INSERT<br/>เช็คอินเวลาปัจจุบัน"]
+        INS --> OUT["✅ ต้อนรับเข้าใช้งาน"]
+        C2["ปุ่มเช็คเอาท์<br/>หรือ Auto 17:00"] --> OUTUP["🗄️ room_access_logs UPDATE<br/>บันทึกเวลาออก"]
+    end
+    style ADMIN fill:#fff7ed,stroke:#c2410c,color:#9a3412,stroke-width:2px
+    style PUBLIC fill:#ecfeff,stroke:#0e7490,color:#155e75,stroke-width:2px`
+  },
+];
+
+function showFlow(id){
+  document.querySelectorAll('.flow-btn').forEach((b,i)=>{
+    if(i+1===id){ b.classList.add('tab-active'); b.classList.remove('bg-white','border','border-slate-200','text-slate-700','hover:bg-slate-50'); }
+    else { b.classList.remove('tab-active'); b.classList.add('bg-white','border','border-slate-200','text-slate-700','hover:bg-slate-50');}
+  });
+  const f = FLOWS[id]; if(!f) return;
+  document.getElementById('flowTitle').textContent = f.title;
+  document.getElementById('flowDesc').textContent = f.desc;
+  document.getElementById('affectedTables').innerHTML = f.tables.map(t=>`<div class="bg-white border border-indigo-200 px-4 py-2 rounded-lg shadow-sm text-sm text-indigo-800 font-medium">🗃️ ${t}</div>`).join('');
+  renderMermaid('flowMermaid', f.mermaid);
+}
+
+/* -------- TABLES (PARSE จาก SQL จริง 100%) -------- */
+function renderTables(){
+  const tables = getTables();
+  const grid = document.getElementById('tablesGrid');
+  grid.innerHTML = tables.map(t => {
+    const checksHTML = t.checks && t.checks.length ? `<div class="px-3 py-2 bg-rose-50 border-t border-rose-100 text-[11px] text-rose-700 font-mono overflow-x-auto"><b>CHECK:</b> ${t.checks.map(escapeHtml).join(' · ')}</div>` : '';
+    const rlsHTML = `<div class="px-3 py-2 ${t.rls?'bg-emerald-50 text-emerald-700':'bg-slate-50 text-slate-600'} border-t border-slate-100 text-[11px] font-medium flex items-center justify-between">
+        <span>${t.rls?'🔐 RLS: ENABLED':'🔓 RLS: disabled'}</span>
+        <span>${t.constraints.length} constraints · ${t.cols.filter(c=>c.fk).length} FK</span>
+      </div>`;
+    return `
+    <div class="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-200 hover:shadow-md transition">
+      <div class="bg-gradient-to-r ${t.accent} p-5 text-white">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center text-2xl">${t.icon}</div>
+            <div>
+              <h4 class="font-bold text-xl">public.${t.name}</h4>
+              <p class="text-xs opacity-90">${t.desc}</p>
+            </div>
+          </div>
+          <div class="text-right">
+            <p class="text-xs opacity-80">จำนวนคอลัมน์</p>
+            <p class="text-2xl font-bold">${t.cols.length}</p>
+          </div>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-xs">
+          <thead class="bg-slate-50 text-slate-600">
+            <tr>
+              <th class="text-left p-2.5 font-semibold w-2/12">คอลัมน์</th>
+              <th class="text-left p-2.5 font-semibold w-2/12">Type</th>
+              <th class="text-left p-2.5 font-semibold w-8/12">หมายเหตุ / คำอธิบาย</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            ${t.cols.map(c => {
+              const mdDesc = c.desc ? `<div class="text-slate-700 mt-0.5">${escapeHtml(c.desc)}</div>` : '';
+              const note = c.note ? `<div class="font-mono text-indigo-600">${escapeHtml(c.note)}</div>` : '';
+              return `<tr class="hover:bg-slate-50 align-top">
+                <td class="p-2.5"><code class="text-indigo-700 font-semibold">${c.name}</code></td>
+                <td class="p-2.5 text-slate-600 font-mono whitespace-nowrap">${c.type}</td>
+                <td class="p-2.5">${note || '<span class="text-slate-300 text-xs">nullable</span>'}${mdDesc}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+      ${checksHTML}
+      ${rlsHTML}
+    </div>`;
+  }).join('') || `<div class="col-span-full text-center p-10 text-slate-400">⚠️ ยังไม่พบ CREATE TABLE ใน SQL — ลองกด 🔄 Refresh หรือโหลดไฟล์ .sql ด้วยปุ่มด้านซ้าย</div>`;
+}
+
+/* -------- POLICIES / FUNCTIONS / TRIGGERS / INDEXES -------- */
+function renderPolicies(){
+  const tables = getTables();
+  const policyRegex = /CREATE\s+POLICY\s+"([^"]+)"\s+ON\s+(?:public\.)?(\w+)(?:\s+AS\s+(?:PERMISSIVE|RESTRICTIVE))?\s+FOR\s+(ALL|SELECT|INSERT|UPDATE|DELETE)\s+([\s\S]*?)(?=(?:\n\s*-{2,})|(?:\n\s*=+\s*\n)|(?:\nCREATE\s)|(?:\nALTER\s)|(?:\nDROP\s)|$)/gi;
+  const perTable = {};
+  let m;
+  while((m = policyRegex.exec(sqlContent)) !== null){
+    const [all, name, tbl, op] = m;
+    if(!perTable[tbl]) perTable[tbl] = [];
+    const usingMatch = all.match(/USING\s*\(\s*([\s\S]*?)\s*\)(?:\s*$|\s+WITH\s+CHECK|\s+TO\s|\s*;)/i);
+    const wcMatch    = all.match(/WITH\s+CHECK\s*\(\s*([\s\S]*?)\s*\)(?:\s*$|\s+TO\s|\s*;)/i);
+    let shortBits = [];
+    if(usingMatch) shortBits.push('USING (' + usingMatch[1].trim().replace(/\s+/g,' ').slice(0,160) + ')');
+    if(wcMatch)    shortBits.push('WITH CHECK (' + wcMatch[1].trim().replace(/\s+/g,' ').slice(0,160) + ')');
+    const short = shortBits.join('  ') || all.replace(/\s+/g,' ').trim().slice(0,220);
+    perTable[tbl].push({name, op, all: all.trim().replace(/;+\s*$/,'')+';', short});
+  }
+  const policyList = document.getElementById('policyList');
+  const allTableNames = Array.from(new Set([...Object.keys(perTable), ...tables.map(t=>t.name)]));
+  policyList.innerHTML = allTableNames.map(tbl => {
+    const tMeta = tables.find(t=>t.name===tbl);
+    const policies = perTable[tbl] || [];
+    const rlsStatus = tMeta ? (tMeta.rls ? '<span class="text-[10px] ml-2 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">RLS ON</span>' : '<span class="text-[10px] ml-2 px-2 py-0.5 rounded-full bg-rose-100 text-rose-700">RLS OFF</span>') : '';
+    const icon = tMeta?.icon || '🗃️';
+    return `
+    <details class="group border border-slate-200 rounded-xl bg-slate-50/50" open>
+      <summary class="flex items-center justify-between p-4 cursor-pointer list-none">
+        <div class="flex items-center gap-3">
+          <span class="text-2xl">${icon}</span>
+          <div>
+            <h4 class="font-bold text-slate-800">public.${tbl}${rlsStatus}</h4>
+            <p class="text-xs text-slate-500">${policies.length} RLS Policy${policies.length!==1?'ies':''}${tMeta?` · ${tMeta.cols.length} cols · ${tMeta.checks?.length||0} CHECK`:''}</p>
+          </div>
+        </div>
+        <span class="text-slate-400 group-open:rotate-180 transition">▾</span>
+      </summary>
+      <div class="px-4 pb-4 space-y-2">
+        ${policies.length ? policies.map(p=>`
+          <div class="bg-white border border-slate-200 rounded-lg">
+            <div class="flex items-center justify-between px-4 py-2 border-b border-slate-100 gap-2 flex-wrap">
+              <div class="min-w-0">
+                <code class="text-sm font-semibold text-slate-800 break-all">${p.name}</code>
+                <span class="ml-2 text-[10px] uppercase font-bold tracking-wide px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 whitespace-nowrap">FOR ${p.op}</span>
+              </div>
+              <details>
+                <summary class="text-xs text-indigo-600 cursor-pointer hover:underline">ดู SQL เต็ม</summary>
+                <pre class="text-xs bg-slate-900 text-slate-100 p-3 rounded-b-lg mt-2 overflow-x-auto"><code class="language-sql">${escapeHtml(p.all)}</code></pre>
+              </details>
+            </div>
+            <div class="px-4 py-2 text-xs font-mono bg-slate-50 rounded-b-lg border-t border-slate-100 text-slate-700 whitespace-pre-wrap break-words">${escapeHtml(p.short)}</div>
+          </div>
+        `).join('') : '<p class="text-xs text-slate-400 px-2 py-3">ไม่มี Policy สำหรับตารางนี้ — ⚠️ ถ้า RLS ON และไม่มี Policy = ไม่สามารถ SELECT/INSERT/UPDATE/DELETE อะไรได้เลย ยกเว้น service_role</p>'}
+      </div>
+    </details>`;
+  }).join('');
+
+  const funcRegex = /CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+(?:public\.)?(\w+)\s*\(([\s\S]*?)\)\s*RETURNS\s+([\s\S]*?)\$\$\s*(?:DECLARE[\s\S]*?)?BEGIN\s*([\s\S]*?)END;\s*\$\$\s*LANGUAGE\s+(\w+)(?:[^;]*);/gi;
+  const funcs = [];
+  while((m = funcRegex.exec(sqlContent)) !== null){
+    funcs.push({ name: m[1], args: m[2].trim(), returns: m[3].trim(), body: m[4].trim(), lang: m[5].trim() });
+  }
+  document.getElementById('funcList').innerHTML = funcs.length ? funcs.map(f=>`
+    <details class="border border-slate-200 rounded-xl bg-slate-50/50">
+      <summary class="p-3 cursor-pointer list-none">
+        <div class="flex items-center justify-between gap-2">
+          <div class="min-w-0">
+            <code class="font-bold text-indigo-700 break-all">public.${f.name}()</code>
+            <p class="text-xs text-slate-500 mt-1 truncate">RETURNS <span class="font-mono text-slate-700">${escapeHtml(f.returns.split('\n')[0].slice(0,80))}</span> · <span class="uppercase">${f.lang}</span></p>
+          </div>
+          <span class="text-slate-400 text-xs shrink-0">▾</span>
+        </div>
+      </summary>
+      <pre class="text-xs bg-slate-900 text-slate-100 p-3 rounded-b-xl overflow-x-auto"><code class="language-sql">CREATE OR REPLACE FUNCTION public.${f.name}(${escapeHtml(f.args)})
+RETURNS ${escapeHtml(f.returns)}
+AS $$
+BEGIN
+  ${escapeHtml(f.body)}
+END;
+$$ LANGUAGE ${f.lang};</code></pre>
+    </details>
+  `).join('') : '<p class="text-sm text-slate-500">ไม่พบฟังก์ชัน (ลองโหลดไฟล์ SQL)</p>';
+
+  const trigRegex = /CREATE\s+TRIGGER\s+(\w+)\s+(BEFORE|AFTER|INSTEAD\s+OF)\s+([\s\S]*?)\s+ON\s+(?:public\.)?(\w+)\s+(?:FOR\s+EACH\s+(ROW|STATEMENT)\s+)?(?:WHEN\s*\([\s\S]*?\)\s+)?EXECUTE\s+(?:PROCEDURE|FUNCTION)\s+(?:public\.)?([\w.()]+)/gi;
+  const trigs = [];
+  while((m = trigRegex.exec(sqlContent)) !== null){
+    trigs.push({ name: m[1], timing: m[2], evt: m[3].trim().split(/\s+(?:OR|ON)\s+/)[0].trim().slice(0,40), table: m[4], scope: m[5]||'ROW', func: m[6] });
+  }
+  document.getElementById('trigList').innerHTML = trigs.length ? trigs.map(t=>`
+    <div class="p-3 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
+      <div class="min-w-0">
+        <code class="font-semibold text-sm text-slate-800 break-all">${t.name}</code>
+        <p class="text-xs text-slate-500 mt-0.5"><b class="text-violet-700">${t.timing}</b> <b>${t.evt}</b> · FOR EACH ${t.scope} → <b>${t.table}</b></p>
+      </div>
+      <div class="text-right shrink-0">
+        <span class="text-[10px] text-slate-400 block">calls</span>
+        <p class="font-mono text-xs text-indigo-700">${t.func}</p>
+      </div>
+    </div>
+  `).join('') : '<p class="text-sm text-slate-500">ไม่พบ Triggers</p>';
+
+  const idxRegex = /CREATE\s+(UNIQUE\s+)?(?:CONCURRENTLY\s+)?INDEX\s+(?:IF\s+NOT\s+EXISTS\s+)?(\w+)\s+ON\s+(?:public\.)?(\w+)\s*(?:USING\s+\w+\s+)?\s*\(\s*([\s\S]*?)\s*\)(?:\s+WHERE\s+([^;]+?))?\s*;/gi;
+  const idxs = [];
+  while((m = idxRegex.exec(sqlContent)) !== null){
+    idxs.push({ unique: !!m[1], name: m[2], table: m[3], cols: m[4].trim(), where: m[5]?.trim() });
+  }
+  document.getElementById('idxList').innerHTML = idxs.length ? idxs.map(i=>`
+    <div class="flex items-center justify-between gap-2 bg-slate-50 p-2 rounded border border-slate-100">
+      <div class="min-w-0 flex items-center gap-2">
+        ${i.unique?'<span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 shrink-0">UNIQUE</span>':''}
+        <span class="font-mono text-slate-700 truncate">${i.name}</span>
+      </div>
+      <div class="text-right shrink-0">
+        <span class="text-[10px] text-slate-500">${i.table}</span>
+        <span class="mx-1 text-slate-400">·</span>
+        <span class="text-[11px] text-indigo-600 font-mono">(${i.cols.slice(0,60)}${i.cols.length>60?'…':''})</span>
+        ${i.where?`<div class="text-[10px] text-rose-600 mt-0.5 truncate">WHERE ${i.where.slice(0,60)}</div>`:''}
+      </div>
+    </div>
+  `).join('') : '<p class="text-sm text-slate-500">ไม่พบ Indexes</p>';
+
+  document.querySelectorAll('#policyList pre code, #funcList pre code').forEach(el=>{ try { hljs.highlightElement(el); } catch(e){} });
+}
+
+/* -------- MARKDOWN -------- */
+function renderMarkdown(){
+  const el = document.getElementById('markdownArticle');
+  if(!mdContent){ el.innerHTML = '<p>ไม่พบเนื้อหา</p>'; return; }
+  el.innerHTML = marked.parse(mdContent, { breaks:true });
+  el.querySelectorAll('pre code').forEach((block) => {
+    if(!block.className) block.className='language-sql';
+    try { hljs.highlightElement(block); } catch(e){}
+  });
+  el.querySelectorAll('pre code.language-mermaid').forEach((code, i) => {
+    const src = code.textContent;
+    const placeholder = document.createElement('div');
+    placeholder.className = 'mermaid my-4';
+    placeholder.id = 'md_mm_' + i;
+    code.parentElement.replaceWith(placeholder);
+    renderMermaid(placeholder.id, src);
+  });
+}
+
+/* =========================================================
+   EDITORS
+   ========================================================= */
+function _installTabKey(el){
+  if(!el || el.dataset.tabKey === '1') return;
+  el.dataset.tabKey = '1';
+  el.addEventListener('keydown', function(e){
+    if(e.key === 'Tab'){
+      e.preventDefault();
+      const st = this.selectionStart, en = this.selectionEnd;
+      const TAB = '  ';
+      this.value = this.value.substring(0, st) + TAB + this.value.substring(en);
+      this.selectionStart = this.selectionEnd = st + TAB.length;
+      const evt = new Event('input', { bubbles:true });
+      this.dispatchEvent(evt);
+    }
+  });
+}
+
+function renderEditors(){
+  const mdE = document.getElementById('mdEditor');
+  const sqlE = document.getElementById('sqlEditor');
+  if(!mdE || !sqlE) return;
+  _installTabKey(mdE); _installTabKey(sqlE);
+  if(!mdE.value || mdE.dataset.init !== '1'){ mdE.value = mdContent || ''; mdE.dataset.init = '1'; }
+  if(!sqlE.value || sqlE.dataset.init !== '1'){ sqlE.value = sqlContent || ''; sqlE.dataset.init = '1'; }
+  const ms = document.getElementById('mdSize');
+  const ss = document.getElementById('sqlSize');
+  const mlen = mdE.value.length, slen = sqlE.value.length;
+  if(ms) ms.textContent = `${mlen.toLocaleString()} chars`;
+  if(ss) ss.textContent = `${slen.toLocaleString()} chars`;
+  const sv = document.getElementById('svrStatus');
+  if(sv){
+    if(hasServer){ sv.textContent = '✅ online'; sv.className='font-semibold text-emerald-600'; }
+    else { sv.textContent = '❌ offline'; sv.className='font-semibold text-rose-600'; }
+    const btn = document.getElementById('btnSaveServer');
+    if(btn) btn.disabled = !hasServer;
+  }
+}
+
+function applyFromEditors(){
+  const mdE = document.getElementById('mdEditor');
+  const sqlE = document.getElementById('sqlEditor');
+  if(!mdE || !sqlE) return;
+  mdContent = mdE.value; sqlContent = sqlE.value; cachedTables = null;
+  updateStatusBadges();
+  renderAll();
+  showEditorMessage('👁️ นำค่าจาก Editor มา Render ทุกแท็บเรียบร้อย — สามารถสลับไปดูแท็บอื่นได้เลย','text-emerald-700 bg-emerald-50 border-emerald-200');
+  switchTab(activeTab);
+}
+
+function resetEditors(){
+  mdContent = originalMd || FALLBACK_MD;
+  sqlContent = originalSql || FALLBACK_SQL;
+  cachedTables = null;
+  const mdE = document.getElementById('mdEditor');
+  const sqlE = document.getElementById('sqlEditor');
+  if(mdE){ mdE.value = mdContent; mdE.dataset.init = '1'; }
+  if(sqlE){ sqlE.value = sqlContent; sqlE.dataset.init = '1'; }
+  updateStatusBadges(); renderAll(); renderEditors();
+  showEditorMessage('↩️ Reset editor เป็นค่าจากไฟล์ตอนเปิดหน้าเว็บสำเร็จ','text-slate-700 bg-slate-50 border-slate-200');
+}
+
+function downloadFile(which){
+  const v = which==='md' ? (document.getElementById('mdEditor')?.value ?? mdContent) : (document.getElementById('sqlEditor')?.value ?? sqlContent);
+  const fn = which==='md' ? 'SCHEMA_DESIGN.md' : '001_init_schema.sql';
+  const mime = which==='md' ? 'text/markdown' : 'application/sql';
+  const blob = new Blob([v], { type: mime + ';charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = fn; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  showEditorMessage(`⬇️ Download ${fn} เรียบร้อย`,'text-emerald-700 bg-emerald-50 border-emerald-200');
+}
+
+function copyFile(which){
+  const v = which==='md' ? (document.getElementById('mdEditor')?.value ?? mdContent) : (document.getElementById('sqlEditor')?.value ?? sqlContent);
+  navigator.clipboard.writeText(v);
+  showEditorMessage(`📋 Copy ${which.toUpperCase()} ไปยัง Clipboard สำเร็จ`,'text-emerald-700 bg-emerald-50 border-emerald-200');
+}
+
+async function saveEditorsToServer(){
+  const md = document.getElementById('mdEditor')?.value ?? mdContent;
+  const sql = document.getElementById('sqlEditor')?.value ?? sqlContent;
+  showEditorMessage('💾 กำลัง save via API …','text-indigo-700 bg-indigo-50 border-indigo-200');
+  try {
+    const r = await saveToServer({md, sql});
+    if(r && r.ok){
+      mdContent = md; sqlContent = sql; originalMd = md; originalSql = sql; cachedTables = null;
+      updateStatusBadges(); renderAll();
+      showEditorMessage(`✅ Save สำเร็จ — เขียนทับไปที่ ${r.path?.md||'SCHEMA_DESIGN.md'} และ ${r.path?.sql||'001_init_schema.sql'} (F5 กลับไปอ่านใหม่)` ,'text-emerald-700 bg-emerald-50 border-emerald-200');
+    } else {
+      showEditorMessage(`❌ Save ไม่สำเร็จ: ${r?.error||'unknown error'}`, 'text-rose-700 bg-rose-50 border-rose-200');
+    }
+  } catch(e){
+    showEditorMessage(`❌ Save ไม่สำเร็จ: ${e.message||e}`, 'text-rose-700 bg-rose-50 border-rose-200');
+  }
+}
+
+function showEditorMessage(text, cls){
+  const el = document.getElementById('editorMessage');
+  if(!el) return;
+  el.className = `mt-3 text-sm px-4 py-2 rounded-lg border ${cls||''}`;
+  el.textContent = text;
+  clearTimeout(el._t); el._t = setTimeout(()=>{ el.textContent=''; el.className='mt-3 text-sm'; }, 5000);
+}
+
+/* -------- Helpers -------- */
+function escapeHtml(s) {
+  return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+</script>
+</body>
+</html>

@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ชั้นหนังสือของฉัน | E-Library วิทยาลัยเทคนิคอำนาจเจริญ</title>
+    <meta name="description" content="ระบบสมาชิกและชั้นหนังสือดิจิทัล วิทยาลัยเทคนิคอำนาจเจริญ">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        sans: ['"Noto Sans Thai"', 'sans-serif'] 
+                    },
+                    colors: {
+                        meb: { 
+                            green: '#00a651', 
+                            hover: '#008c44', 
+                            light: '#e6f6ec',
+                            nav: '#009348',
+                            progress: '#10b981' /* Emerald for reading progress */
+                        },
+                        price: { 
+                            red: '#e53935',
+                            ribbon: '#e11d48',
+                        },
+                        page: {
+                            bg: '#f0f2f5' /* Standard MEB background */
+                        },
+                        text: {
+                            main: '#333333',
+                            sub: '#64748b', /* slate-500 */
+                            muted: '#94a3b8' /* slate-400 */
+                        }
+                    },
+                    aspectRatio: {
+                        'book': '1 / 1.4',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #f0f2f5;
+            color: #333333;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Hide scrollbar for horizontal nav */
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        /* Smooth progress bar transition */
+        .progress-bar-fill {
+            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <header class="sticky top-0 z-50 bg-meb-green w-full shadow-md">
+        <div class="max-w-[1200px] mx-auto h-[60px] px-4 flex items-center justify-between gap-4">
+            
+            <!-- Logo area -->
+            <a href="index.html" class="flex items-center gap-2 text-white hover:text-white/90 shrink-0 focus:outline-none focus:ring-2 focus:ring-white rounded">
+                <i class="ph-fill ph-buildings text-3xl"></i>
+                <div class="flex flex-col">
+                    <span class="text-base font-bold tracking-tight hidden sm:block leading-none mt-1">วิทยาลัยเทคนิคอำนาจเจริญ</span>
+                    <span class="text-[10px] tracking-wider uppercase hidden sm:block">E-Library</span>
+                </div>
+            </a>
+
+            <!-- Search Bar (Desktop) -->
+            <div class="hidden md:flex flex-1 max-w-xl relative mx-4">
+                <input type="text" placeholder="ค้นหาในชั้นหนังสือของคุณ หรือค้นหาหนังสือใหม่..." 
+                       class="w-full h-10 pl-4 pr-10 rounded-md text-sm text-text-main placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-meb-light border-none">
+                <button class="absolute right-0 top-0 h-full w-10 flex items-center justify-center text-gray-500 hover:text-meb-green bg-white rounded-r-md">
+                    <i class="ph-bold ph-magnifying-glass text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Logged-in Actions -->
+            <div class="flex items-center gap-5 shrink-0 text-white">
+                <button class="md:hidden flex items-center justify-center text-2xl hover:text-meb-light focus:outline-none">
+                    <i class="ph ph-magnifying-glass"></i>
+                </button>
+                
+                <!-- Notifications -->
+                <button class="relative flex items-center justify-center text-2xl hover:text-meb-light transition-colors focus:outline-none rounded">
+                    <i class="ph ph-bell"></i>
+                    <span class="absolute top-0 -right-1 w-2.5 h-2.5 bg-price-red rounded-full border-2 border-meb-green"></span>
+                </button>
+
+                <!-- Cart (If they can buy/borrow premium books) -->
+                <a href="#" class="relative hidden sm:flex items-center justify-center text-2xl hover:text-meb-light transition-colors focus:outline-none rounded">
+                    <i class="ph ph-shopping-cart-simple"></i>
+                </a>
+
+                <!-- User Profile Dropdown Trigger -->
+                <button class="flex items-center gap-2 hover:bg-meb-nav pl-2 pr-3 py-1.5 rounded-lg transition-colors focus:outline-none ml-2 border border-transparent hover:border-white/20">
+                    <div class="w-8 h-8 rounded-full bg-white/20 border border-white/40 overflow-hidden flex items-center justify-center">
+                        <!-- Mock Profile Image -->
+                        <img src="https://placehold.co/100x100/e6f6ec/00a651?text=สช" alt="Profile" class="w-full h-full object-cover">
+                    </div>
+                    <div class="flex flex-col text-left hidden lg:flex">
+                        <span class="text-xs font-bold leading-none truncate w-24">สมเกียรติ ช่างไฟ</span>
+                        <span class="text-[10px] text-meb-light">รหัส: 6630123456</span>
+                    </div>
+                    <i class="ph-bold ph-caret-down text-xs hidden lg:block ml-1"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Mobile/Tablet Navigation (Hidden on Desktop) -->
+    <nav class="md:hidden bg-white border-b border-gray-200 sticky top-[60px] z-40 shadow-sm">
+        <div class="px-4 flex items-center gap-2 overflow-x-auto whitespace-nowrap scrollbar-hide py-2">
+            <a href="#" class="px-4 py-1.5 bg-meb-light text-meb-green font-bold text-sm rounded-full border border-meb-green/20 flex items-center gap-1.5">
+                <i class="ph-fill ph-books"></i> ชั้นหนังสือ
+            </a>
+            <a href="#" class="px-4 py-1.5 text-gray-600 hover:bg-gray-50 font-medium text-sm rounded-full border border-gray-200 flex items-center gap-1.5 transition-colors">
+                <i class="ph ph-clock-counter-clockwise"></i> ประวัติ
+            </a>
+            <a href="#" class="px-4 py-1.5 text-gray-600 hover:bg-gray-50 font-medium text-sm rounded-full border border-gray-200 flex items-center gap-1.5 transition-colors">
+                <i class="ph ph-heart"></i> รายการโปรด
+            </a>
+            <a href="#" class="px-4 py-1.5 text-gray-600 hover:bg-gray-50 font-medium text-sm rounded-full border border-gray-200 flex items-center gap-1.5 transition-colors">
+                <i class="ph ph-gear"></i> ตั้งค่า
+            </a>
+        </div>
+    </nav>
+
+    <div class="max-w-[1200px] mx-auto w-full px-4 py-6 flex-1 flex flex-col md:flex-row gap-6">
+        
+        <!-- Sidebar (Desktop Only) -->
+        <aside class="hidden md:block w-64 shrink-0">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden sticky top-[84px]">
+                
+                <!-- Quick User Info -->
+                <div class="p-5 border-b border-gray-100 bg-gray-50 flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-full bg-meb-green flex items-center justify-center text-white font-bold text-lg shadow-inner">
+                        สช
+                    </div>
+                    <div>
+                        <h2 class="font-bold text-text-main text-sm">สมเกียรติ ช่างไฟ</h2>
+                        <p class="text-xs text-text-sub">ปวส. 1 ช่างไฟฟ้ากำลัง</p>
+                    </div>
+                </div>
+
+                <!-- Menu Links -->
+                <div class="p-3 space-y-1">
+                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-meb-light text-meb-green font-bold transition-colors">
+                        <i class="ph-fill ph-books text-xl"></i>
+                        <span class="text-sm">ชั้นหนังสือของฉัน</span>
+                    </a>
+                    <a href="#" class="flex items-center justify-between px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-meb-green font-medium transition-colors group">
+                        <div class="flex items-center gap-3">
+                            <i class="ph ph-cloud-arrow-down text-xl group-hover:fill-current group-hover:ph-fill"></i>
+                            <span class="text-sm">หนังสือที่ดาวน์โหลด</span>
+                        </div>
+                        <span class="text-xs bg-gray-100 px-2 py-0.5 rounded-full text-gray-500">12</span>
+                    </a>
+                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-meb-green font-medium transition-colors group">
+                        <i class="ph ph-clock-counter-clockwise text-xl group-hover:fill-current group-hover:ph-fill"></i>
+                        <span class="text-sm">ประวัติการยืม-อ่าน</span>
+                    </a>
+                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-meb-green font-medium transition-colors group">
+                        <i class="ph ph-heart text-xl group-hover:fill-current group-hover:ph-fill"></i>
+                        <span class="text-sm">รายการโปรด (Wishlist)</span>
+                    </a>
+                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-meb-green font-medium transition-colors group">
+                        <i class="ph ph-chart-bar text-xl group-hover:fill-current group-hover:ph-fill"></i>
+                        <span class="text-sm">สถิติการอ่าน</span>
+                    </a>
+                </div>
+
+                <div class="p-3 border-t border-gray-100">
+                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 font-medium transition-colors">
+                        <i class="ph ph-gear text-xl"></i>
+                        <span class="text-sm">ตั้งค่าบัญชี</span>
+                    </a>
+                    <a href="index.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-price-red hover:bg-red-50 font-medium transition-colors mt-1">
+                        <i class="ph ph-sign-out text-xl"></i>
+                        <span class="text-sm">ออกจากระบบ</span>
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 space-y-6">
+            
+            <section class="bg-gradient-to-r from-meb-green to-[#007f3d] rounded-xl shadow-sm p-6 text-white relative overflow-hidden">
+                <!-- Abstract Background -->
+                <div class="absolute -right-10 -top-10 w-48 h-48 bg-white opacity-10 rounded-full blur-2xl"></div>
+                
+                <div class="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                    <div>
+                        <p class="text-meb-light text-sm mb-1">สวัสดีนักศึกษา,</p>
+                        <h1 class="text-2xl md:text-3xl font-bold mb-2">ยินดีต้อนรับกลับสู่คลังปัญญา</h1>
+                        <p class="text-sm text-white/80 flex items-center gap-2">
+                            <i class="ph-fill ph-student"></i> แผนกวิชาช่างไฟฟ้ากำลัง
+                        </p>
+                    </div>
+                    
+                    <!-- Reading Stats Gamification -->
+                    <div class="flex gap-4 md:gap-6 bg-black/20 p-4 rounded-xl border border-white/10 backdrop-blur-sm w-full md:w-auto">
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-yellow-300">15</div>
+                            <div class="text-[10px] text-white/80 uppercase tracking-wider">เล่มที่อ่านจบ</div>
+                        </div>
+                        <div class="w-px bg-white/20"></div>
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-white">42</div>
+                            <div class="text-[10px] text-white/80 uppercase tracking-wider">ชั่วโมงการอ่าน</div>
+                        </div>
+                        <div class="w-px bg-white/20"></div>
+                        <div class="text-center flex flex-col items-center">
+                            <i class="ph-fill ph-medal text-2xl text-yellow-400 drop-shadow-md"></i>
+                            <div class="text-[10px] text-white/80 uppercase tracking-wider mt-1">ระดับเหรียญทอง</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                <div class="flex items-center gap-2 mb-4">
+                    <div class="w-1.5 h-5 bg-meb-green rounded-full"></div>
+                    <h2 class="text-lg font-bold text-text-main">อ่านค้างไว้ (Continue Reading)</h2>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-5 items-center sm:items-stretch bg-gray-50 p-4 rounded-lg border border-gray-100">
+                    <!-- Book Cover -->
+                    <div class="w-24 sm:w-28 shrink-0 aspect-book rounded shadow-sm border border-gray-200 overflow-hidden relative">
+                        <!-- Cloud icon for online-only -->
+                        <div class="absolute top-1 right-1 w-6 h-6 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white">
+                            <i class="ph-fill ph-cloud text-xs"></i>
+                        </div>
+                        <img src="https://placehold.co/400x560/1a365d/FFFFFF?text=วิศวกรรมไฟฟ้า" alt="พื้นฐานวิศวกรรมไฟฟ้า" class="w-full h-full object-cover">
+                    </div>
+                    
+                    <!-- Book Info & Progress -->
+                    <div class="flex-1 flex flex-col w-full">
+                        <h3 class="font-bold text-text-main text-base line-clamp-2 mb-1">พื้นฐานวิศวกรรมไฟฟ้า ภาคปฏิบัติ</h3>
+                        <p class="text-sm text-text-sub mb-auto">อ.สมเกียรติ ไฟแรง</p>
+                        
+                        <div class="mt-4">
+                            <div class="flex justify-between text-xs font-semibold text-text-sub mb-1.5">
+                                <span>ความคืบหน้า</span>
+                                <span>บทที่ 4 / 65%</span>
+                            </div>
+                            <div class="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden">
+                                <!-- Adjusted width to 65% via inline style for demonstration -->
+                                <div class="h-full bg-meb-progress rounded-full progress-bar-fill relative" style="width: 65%;">
+                                    <div class="absolute inset-0 bg-white/20 w-full animate-[shimmer_2s_infinite]" style="background-image: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 flex gap-3">
+                            <button class="flex-1 bg-meb-green hover:bg-meb-hover text-white font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm shadow-sm">
+                                <i class="ph-fill ph-book-open"></i> อ่านต่อ
+                            </button>
+                            <button class="w-10 flex items-center justify-center text-gray-500 bg-white border border-gray-300 hover:bg-gray-50 hover:text-meb-green rounded-lg transition-colors" title="ดาวน์โหลดไว้อ่านออฟไลน์">
+                                <i class="ph-bold ph-download-simple"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+                    <div class="flex items-center gap-2">
+                        <i class="ph-fill ph-books text-meb-green text-2xl"></i>
+                        <h2 class="text-lg md:text-xl font-bold text-text-main">ชั้นหนังสือของฉัน</h2>
+                    </div>
+                    
+                    <!-- Filters -->
+                    <div class="flex items-center gap-2 text-sm">
+                        <button class="px-3 py-1 bg-meb-light text-meb-green font-bold rounded-full border border-meb-green/20">ทั้งหมด</button>
+                        <button class="px-3 py-1 bg-gray-50 text-gray-600 hover:text-meb-green rounded-full border border-gray-200 transition-colors">ดาวน์โหลดแล้ว</button>
+                        <button class="px-3 py-1 bg-gray-50 text-gray-600 hover:text-meb-green rounded-full border border-gray-200 transition-colors hidden sm:block">ยืมจากห้องสมุด</button>
+                    </div>
+                </div>
+
+                <!-- Bookshelf Grid (4 cols on Desktop since Sidebar takes space) -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
+                    
+                    <!-- Downloaded Book Card -->
+                    <article class="flex flex-col gap-2 group relative">
+                        <div class="aspect-book relative rounded-[2px] shadow-sm border border-gray-200 overflow-hidden mb-1 cursor-pointer">
+                            <!-- Downloaded Indicator -->
+                            <div class="absolute top-1 left-1 bg-meb-green text-white text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 z-10 shadow-sm">
+                                <i class="ph-bold ph-check-circle"></i> ออฟไลน์
+                            </div>
+                            <img src="https://placehold.co/400x560/4a5568/FFFFFF?text=เครื่องยนต์" alt="เครื่องยนต์สันดาปภายใน" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                            <!-- Hover Overlay -->
+                            <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <button class="bg-meb-green text-white rounded-full p-3 shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-all">
+                                    <i class="ph-fill ph-book-open text-xl"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <h3 class="text-sm font-bold text-text-main line-clamp-2 leading-snug group-hover:text-meb-green transition-colors cursor-pointer">เครื่องยนต์สันดาปภายใน (ช่างยนต์)</h3>
+                        
+                        <!-- Mini Progress -->
+                        <div class="mt-auto pt-1">
+                            <div class="flex justify-between text-[10px] text-text-sub mb-1">
+                                <span>อ่านแล้ว</span>
+                                <span>100%</span>
+                            </div>
+                            <div class="w-full h-1 bg-gray-200 rounded-full overflow-hidden">
+                                <div class="h-full bg-meb-progress rounded-full" style="width: 100%;"></div>
+                            </div>
+                        </div>
+                    </article>
+
+                    <!-- Borrowed Book Card -->
+                    <article class="flex flex-col gap-2 group relative">
+                        <div class="aspect-book relative rounded-[2px] shadow-sm border border-gray-200 overflow-hidden mb-1 cursor-pointer">
+                            <!-- Borrow Expiry Badge -->
+                            <div class="absolute top-1 right-1 bg-price-red text-white text-[10px] font-bold px-1.5 py-0.5 rounded z-10 shadow-sm shadow-red-900/50">
+                                คืนใน 3 วัน
+                            </div>
+                            <img src="https://placehold.co/400x560/2d3748/FFFFFF?text=เขียนแบบ" alt="เขียนแบบเทคนิคเบื้องต้น" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                             <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <button class="bg-meb-green text-white rounded-full p-3 shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-all">
+                                    <i class="ph-fill ph-book-open text-xl"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <h3 class="text-sm font-bold text-text-main line-clamp-2 leading-snug group-hover:text-meb-green transition-colors cursor-pointer">เขียนแบบเทคนิคเบื้องต้น 2 มิติ</h3>
+                        
+                        <div class="mt-auto pt-1">
+                            <div class="flex justify-between text-[10px] text-text-sub mb-1">
+                                <span>อ่านแล้ว</span>
+                                <span>30%</span>
+                            </div>
+                            <div class="w-full h-1 bg-gray-200 rounded-full overflow-hidden">
+                                <div class="h-full bg-meb-progress rounded-full" style="width: 30%;"></div>
+                            </div>
+                        </div>
+                    </article>
+
+                    <!-- Cloud Book Card (Not downloaded) -->
+                    <article class="flex flex-col gap-2 group relative">
+                        <div class="aspect-book relative rounded-[2px] shadow-sm border border-gray-200 overflow-hidden mb-1 cursor-pointer">
+                            <div class="absolute top-1 left-1 bg-black/50 backdrop-blur text-white text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 z-10">
+                                <i class="ph-bold ph-cloud"></i> ออนไลน์
+                            </div>
+                            <img src="https://placehold.co/400x560/2b6cb0/FFFFFF?text=English" alt="ภาษาอังกฤษสำหรับช่าง" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                             <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                <button class="bg-meb-green text-white rounded-full p-3 shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-all" title="อ่านออนไลน์">
+                                    <i class="ph-fill ph-book-open text-xl"></i>
+                                </button>
+                                <button class="bg-white text-gray-800 rounded-full p-3 shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-all delay-75 hover:text-meb-green" title="ดาวน์โหลด">
+                                    <i class="ph-bold ph-download-simple text-xl"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <h3 class="text-sm font-bold text-text-main line-clamp-2 leading-snug group-hover:text-meb-green transition-colors cursor-pointer">ภาษาอังกฤษสำหรับช่างเทคนิค</h3>
+                        
+                        <div class="mt-auto pt-1">
+                            <div class="flex justify-between text-[10px] text-text-sub mb-1">
+                                <span>ยังไม่ได้เริ่มอ่าน</span>
+                                <span>0%</span>
+                            </div>
+                            <div class="w-full h-1 bg-gray-200 rounded-full overflow-hidden">
+                                <div class="h-full bg-meb-progress rounded-full" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                    </article>
+
+                    <!-- Added from Free Section -->
+                    <article class="flex flex-col gap-2 group relative hidden lg:flex">
+                        <div class="aspect-book relative rounded-[2px] shadow-sm border border-gray-200 overflow-hidden mb-1 cursor-pointer">
+                             <div class="absolute top-1 left-1 bg-meb-green text-white text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 z-10 shadow-sm">
+                                <i class="ph-bold ph-check-circle"></i> ออฟไลน์
+                            </div>
+                            <img src="https://placehold.co/400x560/2c7a7b/FFFFFF?text=Microcontroller" alt="Microcontroller" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                             <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <button class="bg-meb-green text-white rounded-full p-3 shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-all">
+                                    <i class="ph-fill ph-book-open text-xl"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <h3 class="text-sm font-bold text-text-main line-clamp-2 leading-snug group-hover:text-meb-green transition-colors cursor-pointer">การเขียนโปรแกรม Microcontroller</h3>
+                        
+                        <div class="mt-auto pt-1">
+                            <div class="flex justify-between text-[10px] text-text-sub mb-1">
+                                <span>อ่านแล้ว</span>
+                                <span>85%</span>
+                            </div>
+                            <div class="w-full h-1 bg-gray-200 rounded-full overflow-hidden">
+                                <div class="h-full bg-meb-progress rounded-full" style="width: 85%;"></div>
+                            </div>
+                        </div>
+                    </article>
+
+                </div>
+            </section>
+
+            <section class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                <div class="flex items-center justify-between mb-5">
+                    <div class="flex items-center gap-2">
+                        <i class="ph-fill ph-sparkle text-yellow-500 text-xl"></i>
+                        <h2 class="text-lg font-bold text-text-main">แนะนำสำหรับ "ช่างไฟฟ้ากำลัง"</h2>
+                    </div>
+                    <a href="#" class="text-meb-green text-sm font-medium hover:underline flex items-center">
+                        ดูเพิ่มเติม <i class="ph ph-caret-right ml-0.5"></i>
+                    </a>
+                </div>
+
+                <!-- Uses Standard MEB Listing format with Prices/Free Tags -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
+                    
+                    <article class="flex flex-col gap-2 group cursor-pointer relative">
+                        <div class="aspect-book relative rounded-[2px] shadow-sm border border-gray-200 overflow-hidden mb-1">
+                            <img src="https://placehold.co/400x560/4a5568/FFFFFF?text=Safety" alt="ความปลอดภัย" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                        </div>
+                        <h3 class="text-sm font-bold text-text-main line-clamp-2 leading-snug group-hover:text-meb-green transition-colors">ความปลอดภัยในงานไฟฟ้า (Safety First)</h3>
+                        <p class="text-xs text-text-sub truncate">หมวดวิชาช่างไฟฟ้า</p>
+                        <div class="mt-auto pt-1 flex items-end justify-between">
+                            <div class="flex text-yellow-400 text-[11px] gap-[1px]">
+                               <i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star text-slate-300"></i>
+                            </div>
+                            <div class="text-meb-green font-bold text-sm leading-none">ฟรี</div>
+                        </div>
+                    </article>
+
+                    <article class="flex flex-col gap-2 group cursor-pointer relative">
+                        <div class="aspect-book relative rounded-[2px] shadow-sm border border-gray-200 overflow-hidden mb-1">
+                            <!-- Discount Badge -->
+                            <div class="absolute top-0 left-0 bg-price-red text-white text-[10px] font-bold px-1.5 py-0.5 rounded-br-md z-10">-15%</div>
+                            <img src="https://placehold.co/400x560/2c5282/FFFFFF?text=PLC" alt="PLC" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                        </div>
+                        <h3 class="text-sm font-bold text-text-main line-clamp-2 leading-snug group-hover:text-meb-green transition-colors">การควบคุมโปรแกรมเมเบิลลอจิกคอนโทรลเลอร์ (PLC)</h3>
+                        <p class="text-xs text-text-sub truncate">อ.ควบคุม ระบบ</p>
+                        <div class="mt-auto pt-1 flex items-end justify-between">
+                            <div class="flex text-yellow-400 text-[11px] gap-[1px]">
+                               <i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star-half"></i>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-[10px] text-text-muted line-through block leading-none mb-0.5">฿ 250</span>
+                                <span class="text-price-red font-bold text-sm leading-none">฿ 212</span>
+                            </div>
+                        </div>
+                    </article>
+                    
+                    <article class="flex flex-col gap-2 group cursor-pointer relative">
+                        <div class="aspect-book relative rounded-[2px] shadow-sm border border-gray-200 overflow-hidden mb-1">
+                            <img src="https://placehold.co/400x560/975a16/FFFFFF?text=การติดตั้ง" alt="การติดตั้งไฟฟ้า" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                        </div>
+                        <h3 class="text-sm font-bold text-text-main line-clamp-2 leading-snug group-hover:text-meb-green transition-colors">การติดตั้งไฟฟ้าในอาคารและโรงงาน</h3>
+                        <p class="text-xs text-text-sub truncate">อ.เดินสาย ไฟ</p>
+                        <div class="mt-auto pt-1 flex items-end justify-between">
+                            <div class="flex text-yellow-400 text-[11px] gap-[1px]">
+                               <i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i>
+                            </div>
+                            <div class="text-meb-green font-bold text-sm leading-none">฿ 190</div>
+                        </div>
+                    </article>
+
+                    <article class="flex flex-col gap-2 group cursor-pointer relative hidden lg:flex">
+                        <div class="aspect-book relative rounded-[2px] shadow-sm border border-gray-200 overflow-hidden mb-1">
+                            <img src="https://placehold.co/400x560/2b6cb0/FFFFFF?text=Motor" alt="มอเตอร์ไฟฟ้า" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                        </div>
+                        <h3 class="text-sm font-bold text-text-main line-clamp-2 leading-snug group-hover:text-meb-green transition-colors">มอเตอร์ไฟฟ้ากระแสสลับ 3 เฟส</h3>
+                        <p class="text-xs text-text-sub truncate">แผนกช่างไฟฟ้ากำลัง</p>
+                        <div class="mt-auto pt-1 flex items-end justify-between">
+                            <div class="flex text-yellow-400 text-[11px] gap-[1px]">
+                               <i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star text-slate-300"></i>
+                            </div>
+                            <div class="text-meb-green font-bold text-sm leading-none">ฟรี</div>
+                        </div>
+                    </article>
+
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Simple Footer (Group 4 deep pages pattern) -->
+    <footer class="bg-white border-t border-gray-200 mt-auto py-6">
+        <div class="max-w-[1200px] mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-gray-500">
+            <p>&copy; 2026 วิทยาลัยเทคนิคอำนาจเจริญ E-Library.</p>
+            <div class="flex gap-4">
+                <a href="#" class="hover:text-meb-green">เงื่อนไขการใช้งาน</a>
+                <a href="#" class="hover:text-meb-green">ติดต่อศูนย์วิทยบริการ</a>
+                <a href="#" class="hover:text-meb-green flex items-center gap-1"><i class="ph-fill ph-question text-sm"></i> ช่วยเหลือ</a>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>
