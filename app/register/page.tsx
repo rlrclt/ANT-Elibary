@@ -43,7 +43,7 @@ export default function RegisterPage() {
           supabase.from("dropdown_departments").select("id, name").eq("is_active", true).order("sort_order").order("name"),
           supabase.from("dropdown_class_levels").select("id, name").eq("is_active", true).order("sort_order").order("name"),
           supabase.from("dropdown_room_levels").select("id, name").eq("is_active", true).order("sort_order").order("name"),
-          supabase.from("dropdown_class_groups").select("id, code, department_id, class_level_id").eq("is_active", true).order("sort_order").order("code"),
+          supabase.from("dropdown_class_groups").select("id, code, department_id, class_level_id, academic_year").eq("is_active", true).order("sort_order").order("code"),
         ]);
 
         if (deptRes.data) {
@@ -60,7 +60,7 @@ export default function RegisterPage() {
         if (groupRes.data) {
           setClassGroups(groupRes.data.map((g: any) => ({
             value: g.id,
-            label: g.code,
+            label: g.academic_year ? `${g.code} (ปีการศึกษา ${g.academic_year})` : g.code,
             department_id: g.department_id,
             class_level_id: g.class_level_id,
           })));

@@ -42,6 +42,7 @@ export type DropdownOption = {
   visible_to: string[];
   department_id?: string;
   class_level_id?: string;
+  academic_year?: string;
 };
 
 // ---------- Helper: Verify Admin Role ----------
@@ -145,7 +146,8 @@ export async function addDropdownOptionAction(
   sortOrder: number = 0,
   visibleRoles: string[] = [],
   departmentId?: string,
-  classLevelId?: string
+  classLevelId?: string,
+  academicYear?: string
 ): Promise<{ success: boolean; error: string | null }> {
   const trimmedName = name.trim();
   if (!trimmedName) {
@@ -172,9 +174,13 @@ export async function addDropdownOptionAction(
     if (!departmentId || !classLevelId) {
       return { success: false, error: "กรุณาเลือกแผนกวิชาและระดับชั้น" };
     }
+    if (!academicYear || !academicYear.trim()) {
+      return { success: false, error: "กรุณาระบุปีการศึกษา" };
+    }
     insertData.code = trimmedName;
     insertData.department_id = departmentId;
     insertData.class_level_id = classLevelId;
+    insertData.academic_year = academicYear.trim();
   } else {
     insertData.name = trimmedName;
   }
@@ -183,7 +189,12 @@ export async function addDropdownOptionAction(
 
   if (error) {
     if (error.code === "23505") {
-      return { success: false, error: `มีตัวเลือก "${trimmedName}" นี้อยู่แล้ว` };
+      return {
+        success: false,
+        error: table === "class_groups"
+          ? `รหัสกลุ่มเรียน "${trimmedName}" นี้ถูกใช้งานในระบบแล้ว (รหัสกลุ่มเรียนห้ามซ้ำกัน)`
+          : `มีตัวเลือก "${trimmedName}" นี้อยู่แล้ว`
+      };
     }
     return { success: false, error: error.message };
   }
@@ -204,7 +215,8 @@ export async function updateDropdownOptionAction(
   isActive: boolean,
   visibleRoles: string[] = [],
   departmentId?: string,
-  classLevelId?: string
+  classLevelId?: string,
+  academicYear?: string
 ): Promise<{ success: boolean; error: string | null }> {
   const trimmedNewName = name.trim();
 
@@ -247,9 +259,13 @@ export async function updateDropdownOptionAction(
     if (!departmentId || !classLevelId) {
       return { success: false, error: "กรุณาเลือกแผนกวิชาและระดับชั้น" };
     }
+    if (!academicYear || !academicYear.trim()) {
+      return { success: false, error: "กรุณาระบุปีการศึกษา" };
+    }
     updateData.code = trimmedNewName;
     updateData.department_id = departmentId;
     updateData.class_level_id = classLevelId;
+    updateData.academic_year = academicYear.trim();
   } else {
     updateData.name = trimmedNewName;
   }
@@ -261,7 +277,12 @@ export async function updateDropdownOptionAction(
 
   if (updateError) {
     if (updateError.code === "23505") {
-      return { success: false, error: `มีตัวเลือก "${trimmedNewName}" นี้อยู่แล้ว` };
+      return {
+        success: false,
+        error: table === "class_groups"
+          ? `รหัสกลุ่มเรียน "${trimmedNewName}" นี้ถูกใช้งานในระบบแล้ว (รหัสกลุ่มเรียนห้ามซ้ำกัน)`
+          : `มีตัวเลือก "${trimmedNewName}" นี้อยู่แล้ว`
+      };
     }
     return { success: false, error: updateError.message };
   }

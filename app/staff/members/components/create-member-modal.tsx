@@ -308,7 +308,9 @@ export function CreateMemberModal({
                     {classGroups
                       .filter((cg) => cg.department_id === selectedDeptId && cg.class_level_id === selectedClassLevelId)
                       .map((cg) => (
-                        <option key={cg.id} value={cg.id}>{cg.name}</option>
+                        <option key={cg.id} value={cg.id}>
+                          {cg.academic_year ? `${cg.name} (ปีการศึกษา ${cg.academic_year})` : cg.name}
+                        </option>
                       ))}
                   </select>
                 </div>

@@ -74,6 +74,7 @@ export function DropdownClient({
   // Form states for class_groups
   const [formDeptId, setFormDeptId] = useState("");
   const [formClassLevelId, setFormClassLevelId] = useState("");
+  const [formAcademicYear, setFormAcademicYear] = useState("");
 
   // Filter states for class_groups list
   const [filterDeptId, setFilterDeptId] = useState("");
@@ -123,9 +124,11 @@ export function DropdownClient({
     if (activeTab === "class_groups") {
       setFormDeptId(filterDeptId || (departments[0]?.id ?? ""));
       setFormClassLevelId(filterClassLevelId || (classLevels[0]?.id ?? ""));
+      setFormAcademicYear("2569");
     } else {
       setFormDeptId("");
       setFormClassLevelId("");
+      setFormAcademicYear("");
     }
     setError(null);
     setSuccess(null);
@@ -226,7 +229,8 @@ export function DropdownClient({
           isActiveVal,
           autoVisibleRoles,
           activeTab === "class_groups" ? formDeptId : undefined,
-          activeTab === "class_groups" ? formClassLevelId : undefined
+          activeTab === "class_groups" ? formClassLevelId : undefined,
+          activeTab === "class_groups" ? formAcademicYear : undefined
         );
         if (!res.success) {
           setError(res.error);
@@ -244,7 +248,8 @@ export function DropdownClient({
           maxOrder + 1,
           autoVisibleRoles,
           activeTab === "class_groups" ? formDeptId : undefined,
-          activeTab === "class_groups" ? formClassLevelId : undefined
+          activeTab === "class_groups" ? formClassLevelId : undefined,
+          activeTab === "class_groups" ? formAcademicYear : undefined
         );
         if (!res.success) {
           setError(res.error);
@@ -266,6 +271,7 @@ export function DropdownClient({
     if (activeTab === "class_groups") {
       setFormDeptId(option.department_id ?? "");
       setFormClassLevelId(option.class_level_id ?? "");
+      setFormAcademicYear(option.academic_year ?? "");
     }
     setError(null);
     setSuccess(null);
@@ -278,6 +284,7 @@ export function DropdownClient({
     if (activeTab === "class_groups") {
       setFormDeptId(filterDeptId);
       setFormClassLevelId(filterClassLevelId);
+      setFormAcademicYear("2569");
     }
     setError(null);
   }
@@ -563,6 +570,22 @@ export function DropdownClient({
                     ))}
                   </select>
                 </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="formAcademicYear" className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    ปีการศึกษา <span className="text-price-red">*</span>
+                  </label>
+                  <input
+                    id="formAcademicYear"
+                    type="text"
+                    placeholder="เช่น 2569"
+                    value={formAcademicYear}
+                    onChange={(e) => setFormAcademicYear(e.target.value)}
+                    className="w-full px-3.5 py-2.5 text-sm bg-white dark:bg-black/20 border border-gray-200 dark:border-border-base rounded-xl outline-none focus:border-meb-green focus:ring-2 focus:ring-meb-light text-forest dark:text-slate-100 transition"
+                    required
+                    disabled={pending}
+                  />
+                </div>
               </>
             )}
 
@@ -675,6 +698,7 @@ export function DropdownClient({
                             <>
                               <th className="px-5 py-3 text-[11px] uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">แผนกวิชา</th>
                               <th className="px-5 py-3 text-[11px] uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">ระดับชั้น</th>
+                              <th className="px-5 py-3 text-[11px] uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">ปีการศึกษา</th>
                             </>
                           ) : (
                             <th className="px-5 py-3 text-[11px] uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">กลุ่มที่มองเห็น</th>
@@ -724,6 +748,9 @@ export function DropdownClient({
                                       </td>
                                       <td className="px-5 py-3.5 text-slate-600 dark:text-slate-300">
                                         {classLevels.find((c) => c.id === opt.class_level_id)?.name || opt.class_level_id || "—"}
+                                      </td>
+                                      <td className="px-5 py-3.5 text-slate-600 dark:text-slate-300">
+                                        {opt.academic_year || "—"}
                                       </td>
                                     </>
                                   ) : (

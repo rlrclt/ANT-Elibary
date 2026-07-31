@@ -238,7 +238,10 @@ export function ProfileForm({
                 onChange={(e) => setSelectedClassGroupId(e.target.value)}
                 options={classGroups
                   .filter((g) => g.department_id === selectedDeptId && g.class_level_id === selectedClassLevelId)
-                  .map((g) => ({ value: g.id, label: g.name }))}
+                  .map((g) => ({
+                    value: g.id,
+                    label: g.academic_year ? `${g.name} (ปีการศึกษา ${g.academic_year})` : g.name,
+                  }))}
                 icon="users"
               />
 
