@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useRef, useState, useEffect, useTransition } from "react";
 import { PhosphorIcon } from "../../../components/phosphor-icon";
 import {
   updateMemberAction,
@@ -13,10 +13,16 @@ import {
  * member-detail-drawer — แผงรายละเอียด/แก้ไขสมาชิก
  * Slide-in จากขวา, ฟอร์มแก้ไขข้อมูล + ปุ่มระงับ/เปิดใช้งาน
  */
+import type { DropdownOption } from "@/app/staff/settings/dropdowns/actions";
+
 type MemberDetailDrawerProps = {
   open: boolean;
   onClose: () => void;
   user: User | null;
+  departments: DropdownOption[];
+  classLevels: DropdownOption[];
+  roomLevels: DropdownOption[];
+  classGroups: DropdownOption[];
 };
 
 // ฟอร์แมตเงิน ฿X,XXX
@@ -49,6 +55,10 @@ export function MemberDetailDrawer({
   open,
   onClose,
   user,
+  departments,
+  classLevels,
+  roomLevels,
+  classGroups,
 }: MemberDetailDrawerProps) {
   const [pending, startTransition] = useTransition();
   const [statusPending, startStatusTransition] = useTransition();
@@ -60,6 +70,23 @@ export function MemberDetailDrawer({
   // เก็บสถานะปัจจุบันไว้สำหรับสลับปุ่ม suspend/activate
   const activeStatus: User["status"] | null =
     currentStatus ?? user?.status ?? null;
+
+  const [userType, setUserType] = useState<string>("student");
+  const [selectedDeptId, setSelectedDeptId] = useState("");
+  const [selectedClassLevelId, setSelectedClassLevelId] = useState("");
+  const [selectedRoomLevelId, setSelectedRoomLevelId] = useState("");
+  const [selectedClassGroupId, setSelectedClassGroupId] = useState("");
+
+  useEffect(() => {
+    if (user) {
+      setUserType(user.user_type || "student");
+      setSelectedDeptId(user.department_id || "");
+      setSelectedClassLevelId(user.class_level_id || "");
+      setSelectedRoomLevelId(user.room_level_id || "");
+      setSelectedClassGroupId(user.class_group_id || "");
+      setCurrentStatus(null);
+    }
+  }, [user]);
 
   // submit ฟอร์มแก้ไขข้อมูลสมาชิก
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -277,44 +304,121 @@ export function MemberDetailDrawer({
                   </div>
                 </div>
 
+                {/* User Type */}
+                <div className="md:col-span-6">
+                  <label className="block text-sm font-medium text-forest dark:text-slate-100 mb-1.5">
+                    ประเภทผู้ใช้งาน <span className="text-terracotta">*</span>
+                  </label>
+                  <select
+                    name="user_type"
+                    value={userType}
+                    onChange={(e) => setUserType(e.target.value)}
+                    className="w-full pl-3 pr-3 py-2.5 text-sm bg-white dark:bg-card-bg border border-gray-200 dark:border-border-base rounded-md outline-none focus:border-meb-green focus:ring-2 focus:ring-meb-light text-forest dark:text-slate-100"
+                  >
+                    <option value="student">นักเรียน/นักศึกษา (Student)</option>
+                    <option value="teacher">ครู/อาจารย์ (Teacher)</option>
+                    <option value="staff">บุคลากร/เจ้าหน้าที่ (Staff)</option>
+                    <option value="external">บุคคลภายนอก (External)</option>
+                  </select>
+                </div>
+
                 {/* Department */}
-                <div className="md:col-span-3">
-                  <label className="block text-sm font-medium text-forest dark:text-slate-100 mb-1.5">
-                    แผนก
-                  </label>
-                  <input
-                    name="department"
-                    type="text"
-                    defaultValue={user.department ?? ""}
-                    className="w-full pl-3 pr-3 py-2.5 text-sm bg-white dark:bg-card-bg border border-gray-200 dark:border-border-base rounded-md outline-none focus:border-meb-green focus:ring-2 focus:ring-meb-light text-forest dark:text-slate-100"
-                  />
-                </div>
+                {userType !== "external" && (
+                  <div className="md:col-span-3">
+                    <label className="block text-sm font-medium text-forest dark:text-slate-100 mb-1.5">
+                      แผนกวิชา <span className="text-terracotta">*</span>
+                    </label>
+                    <select
+                      name="department_id"
+                      value={selectedDeptId}
+                      onChange={(e) => setSelectedDeptId(e.target.value)}
+                      className="w-full pl-3 pr-3 py-2.5 text-sm bg-white dark:bg-card-bg border border-gray-200 dark:border-border-base rounded-md outline-none focus:border-meb-green focus:ring-2 focus:ring-meb-light text-forest dark:text-slate-100"
+                      required
+                    >
+                      <option value="">-- เลือกแผนกวิชา --</option>
+                      {departments.map((d) => (
+                        <option key={d.id} value={d.id}>{d.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
-                {/* Class level */}
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-forest dark:text-slate-100 mb-1.5">
-                    ระดับชั้น
-                  </label>
-                  <input
-                    name="class_level"
-                    type="text"
-                    defaultValue={user.class_level ?? ""}
-                    className="w-full pl-3 pr-3 py-2.5 text-sm bg-white dark:bg-card-bg border border-gray-200 dark:border-border-base rounded-md outline-none focus:border-meb-green focus:ring-2 focus:ring-meb-light text-forest dark:text-slate-100"
-                  />
-                </div>
+                {/* Student fields */}
+                {userType === "student" && (
+                  <>
+                    {/* Class level */}
+                    <div className="md:col-span-3">
+                      <label className="block text-sm font-medium text-forest dark:text-slate-100 mb-1.5">
+                        ระดับชั้น <span className="text-terracotta">*</span>
+                      </label>
+                      <select
+                        name="class_level_id"
+                        value={selectedClassLevelId}
+                        onChange={(e) => setSelectedClassLevelId(e.target.value)}
+                        className="w-full pl-3 pr-3 py-2.5 text-sm bg-white dark:bg-card-bg border border-gray-200 dark:border-border-base rounded-md outline-none focus:border-meb-green focus:ring-2 focus:ring-meb-light text-forest dark:text-slate-100"
+                        required
+                      >
+                        <option value="">-- เลือกระดับชั้น --</option>
+                        {classLevels.map((c) => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
 
-                {/* Class number */}
-                <div className="md:col-span-1">
-                  <label className="block text-sm font-medium text-forest dark:text-slate-100 mb-1.5">
-                    เลขที่
-                  </label>
-                  <input
-                    name="class_number"
-                    type="text"
-                    defaultValue={user.class_number ?? ""}
-                    className="w-full pl-3 pr-3 py-2.5 text-sm bg-white dark:bg-card-bg border border-gray-200 dark:border-border-base rounded-md outline-none focus:border-meb-green focus:ring-2 focus:ring-meb-light text-forest dark:text-slate-100"
-                  />
-                </div>
+                    {/* Room Level */}
+                    <div className="md:col-span-3">
+                      <label className="block text-sm font-medium text-forest dark:text-slate-100 mb-1.5">
+                        กลุ่มเรียน/ห้องเรียน <span className="text-terracotta">*</span>
+                      </label>
+                      <select
+                        name="room_level_id"
+                        value={selectedRoomLevelId}
+                        onChange={(e) => setSelectedRoomLevelId(e.target.value)}
+                        className="w-full pl-3 pr-3 py-2.5 text-sm bg-white dark:bg-card-bg border border-gray-200 dark:border-border-base rounded-md outline-none focus:border-meb-green focus:ring-2 focus:ring-meb-light text-forest dark:text-slate-100"
+                        required
+                      >
+                        <option value="">-- เลือกห้องเรียน --</option>
+                        {roomLevels.map((r) => (
+                          <option key={r.id} value={r.id}>{r.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Class Group Code */}
+                    <div className="md:col-span-3">
+                      <label className="block text-sm font-medium text-forest dark:text-slate-100 mb-1.5">
+                        รหัสกลุ่มเรียน <span className="text-terracotta">*</span>
+                      </label>
+                      <select
+                        name="class_group_id"
+                        value={selectedClassGroupId}
+                        onChange={(e) => setSelectedClassGroupId(e.target.value)}
+                        className="w-full pl-3 pr-3 py-2.5 text-sm bg-white dark:bg-card-bg border border-gray-200 dark:border-border-base rounded-md outline-none focus:border-meb-green focus:ring-2 focus:ring-meb-light text-forest dark:text-slate-100"
+                        required
+                      >
+                        <option value="">-- เลือกรหัสกลุ่มเรียน --</option>
+                        {classGroups
+                          .filter((cg) => cg.department_id === selectedDeptId && cg.class_level_id === selectedClassLevelId)
+                          .map((cg) => (
+                            <option key={cg.id} value={cg.id}>{cg.name}</option>
+                          ))}
+                      </select>
+                    </div>
+
+                    {/* Class number */}
+                    <div className="md:col-span-3">
+                      <label className="block text-sm font-medium text-forest dark:text-slate-100 mb-1.5">
+                        เลขที่
+                      </label>
+                      <input
+                        name="class_number"
+                        type="text"
+                        defaultValue={user.class_number ?? ""}
+                        className="w-full pl-3 pr-3 py-2.5 text-sm bg-white dark:bg-card-bg border border-gray-200 dark:border-border-base rounded-md outline-none focus:border-meb-green focus:ring-2 focus:ring-meb-light text-forest dark:text-slate-100"
+                      />
+                    </div>
+                  </>
+                )}
 
                 {/* Address */}
                 <div className="md:col-span-6">

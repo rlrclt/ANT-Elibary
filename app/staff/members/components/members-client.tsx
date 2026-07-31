@@ -8,9 +8,15 @@ import { MemberTable } from "./member-table";
 import { MemberDetailDrawer } from "./member-detail-drawer";
 import { CreateMemberModal } from "./create-member-modal";
 
+import type { DropdownOption } from "@/app/staff/settings/dropdowns/actions";
+
 type MembersClientProps = {
   initialUsers: User[];
   initialStats: UserStats;
+  departments: DropdownOption[];
+  classLevels: DropdownOption[];
+  roomLevels: DropdownOption[];
+  classGroups: DropdownOption[];
 };
 
 /**
@@ -18,7 +24,14 @@ type MembersClientProps = {
  * จัดการ state: search/filter, drawer, refresh ข้อมูล
  * หมายเหตุ: stats เป็น initial only (ไม่ refetch ตอน filter เปลี่ยน)
  */
-export function MembersClient({ initialUsers, initialStats }: MembersClientProps) {
+export function MembersClient({
+  initialUsers,
+  initialStats,
+  departments,
+  classLevels,
+  roomLevels,
+  classGroups,
+}: MembersClientProps) {
   const [users, setUsers] = useState(initialUsers);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<"all" | "member" | "staff" | "admin">(
@@ -165,6 +178,10 @@ export function MembersClient({ initialUsers, initialStats }: MembersClientProps
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         user={selectedUser}
+        departments={departments}
+        classLevels={classLevels}
+        roomLevels={roomLevels}
+        classGroups={classGroups}
       />
 
       {/* Modal สร้างสมาชิกใหม่ */}
@@ -172,6 +189,10 @@ export function MembersClient({ initialUsers, initialStats }: MembersClientProps
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         onSuccess={handleSearch}
+        departments={departments}
+        classLevels={classLevels}
+        roomLevels={roomLevels}
+        classGroups={classGroups}
       />
     </>
   );

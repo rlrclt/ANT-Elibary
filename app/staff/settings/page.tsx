@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { createClient } from "@/utils/supabase/server";
 import { SettingsClient } from "./components/settings-client";
+import { getDropdownOptionsAction } from "@/app/staff/settings/dropdowns/actions";
 
 export const metadata: Metadata = {
   title: "ตั้งค่าบัญชี",
@@ -19,11 +20,16 @@ export default async function StaffSettingsPage() {
 
   if (!user) return null;
 
-  const { data: profile } = await supabase
-    .from("users")
-    .select("*")
-    .eq("id", user.id)
-    .maybeSingle();
+  const [profileRes, dropdownsRes] = await Promise.all([
+    supabase
+      .from("users")
+      .select("*")
+      .eq("id", user.id)
+      .maybeSingle(),
+    getDropdownOptionsAction(),
+  ]);
+
+  const profile = profileRes.data;
 
   if (!profile) return null;
 
@@ -43,8 +49,19 @@ export default async function StaffSettingsPage() {
         role: profile.role,
         fine_balance: profile.fine_balance ?? 0,
         created_at: profile.created_at,
+        user_type: profile.user_type,
+        department_id: profile.department_id,
+        class_level_id: profile.class_level_id,
+        room_level_id: profile.room_level_id,
+        room_level: profile.room_level ?? "",
+        class_group_id: profile.class_group_id,
+        class_group: profile.class_group,
       }}
       userEmail={user.email ?? null}
+      departments={dropdownsRes.departments || []}
+      classLevels={dropdownsRes.classLevels || []}
+      roomLevels={dropdownsRes.roomLevels || []}
+      classGroups={dropdownsRes.classGroups || []}
     />
   );
 }

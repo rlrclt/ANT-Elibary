@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { getMembersAction, getMemberStatsAction } from "./actions";
 import { MembersClient } from "./components/members-client";
+import { getDropdownOptionsAction } from "@/app/staff/settings/dropdowns/actions";
 
 export const metadata = {
   title: "จัดการสมาชิก",
@@ -18,9 +19,10 @@ export default async function StaffMembersPage() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const [membersResult, statsResult] = await Promise.all([
+  const [membersResult, statsResult, dropdownsRes] = await Promise.all([
     getMembersAction(),
     getMemberStatsAction(),
+    getDropdownOptionsAction(),
   ]);
 
   return (
@@ -29,6 +31,10 @@ export default async function StaffMembersPage() {
       initialStats={
         statsResult.data ?? { total: 0, members: 0, staff: 0, suspended: 0 }
       }
+      departments={dropdownsRes.departments || []}
+      classLevels={dropdownsRes.classLevels || []}
+      roomLevels={dropdownsRes.roomLevels || []}
+      classGroups={dropdownsRes.classGroups || []}
     />
   );
 }

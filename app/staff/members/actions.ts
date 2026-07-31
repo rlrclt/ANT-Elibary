@@ -27,6 +27,13 @@ export type User = {
   avatar_url: string | null;
   address: string | null;
   created_at: string;
+  user_type: string | null;
+  department_id: string | null;
+  class_level_id: string | null;
+  room_level_id: string | null;
+  room_level: string | null;
+  class_group_id: string | null;
+  class_group: string | null;
 };
 
 export type UserStats = {
@@ -51,7 +58,7 @@ export async function getMembersAction(filters?: MemberFilters): Promise<{
   let query = supabase
     .from("users")
     .select(
-      "id, user_id_code, full_name, email, department, class_level, class_number, role, status, borrow_limit, fine_balance, phone, avatar_url, address, created_at",
+      "id, user_id_code, full_name, email, department, class_level, class_number, role, status, borrow_limit, fine_balance, phone, avatar_url, address, created_at, user_type, department_id, class_level_id, room_level_id, room_level, class_group_id, class_group",
     )
     .order("created_at", { ascending: false });
 
@@ -124,9 +131,6 @@ export async function updateMemberAction(
   if (!fullName) return { error: "กรุณากรอกชื่อ-สกุล" };
 
   const email = String(formData.get("email") ?? "").trim() || null;
-  const department = String(formData.get("department") ?? "").trim() || null;
-  const classLevel = String(formData.get("class_level") ?? "").trim() || null;
-  const classNumber = String(formData.get("class_number") ?? "").trim() || null;
   const role = String(formData.get("role") ?? "member") as "member" | "staff" | "admin";
   const status = String(formData.get("status") ?? "active") as "active" | "suspended";
   const borrowLimit = parseInt(String(formData.get("borrow_limit") ?? "5"), 10);
@@ -134,6 +138,13 @@ export async function updateMemberAction(
   const address = String(formData.get("address") ?? "").trim() || null;
   const avatarUrl = String(formData.get("avatar_url") ?? "").trim() || null;
   const newPassword = String(formData.get("new_password") ?? "");
+
+  const userType = String(formData.get("user_type") ?? "student").trim();
+  const departmentId = String(formData.get("department_id") ?? "").trim() || null;
+  const classLevelId = String(formData.get("class_level_id") ?? "").trim() || null;
+  const roomLevelId = String(formData.get("room_level_id") ?? "").trim() || null;
+  const classGroupId = String(formData.get("class_group_id") ?? "").trim() || null;
+  const classNumber = String(formData.get("class_number") ?? "").trim() || null;
 
   // 1. ดึงข้อมูลเดิมเพื่อตรวจสอบการเปลี่ยนแปลง
   const { data: oldUser, error: fetchError } = await adminClient
@@ -197,15 +208,18 @@ export async function updateMemberAction(
     .update({
       full_name: fullName,
       email,
-      department,
-      class_level: classLevel,
-      class_number: classNumber,
       role,
       status,
       borrow_limit: isNaN(borrowLimit) ? 5 : borrowLimit,
       phone,
       address,
       avatar_url: avatarUrl,
+      user_type: userType,
+      department_id: departmentId,
+      class_level_id: classLevelId,
+      room_level_id: roomLevelId,
+      class_group_id: classGroupId,
+      class_number: classNumber,
     })
     .eq("id", id);
 
@@ -262,12 +276,16 @@ export async function createMemberAction(
   const userIdCode = String(formData.get("user_id_code") ?? "").trim() || null;
   const role = String(formData.get("role") ?? "member") as "member" | "staff" | "admin";
   const status = String(formData.get("status") ?? "active") as "active" | "suspended";
-  const department = String(formData.get("department") ?? "").trim() || null;
-  const classLevel = String(formData.get("class_level") ?? "").trim() || null;
-  const classNumber = String(formData.get("class_number") ?? "").trim() || null;
   const borrowLimit = parseInt(String(formData.get("borrow_limit") ?? "5"), 10);
   const address = String(formData.get("address") ?? "").trim() || null;
   const avatarUrl = String(formData.get("avatar_url") ?? "").trim() || null;
+
+  const userType = String(formData.get("user_type") ?? "student").trim();
+  const departmentId = String(formData.get("department_id") ?? "").trim() || null;
+  const classLevelId = String(formData.get("class_level_id") ?? "").trim() || null;
+  const roomLevelId = String(formData.get("room_level_id") ?? "").trim() || null;
+  const classGroupId = String(formData.get("class_group_id") ?? "").trim() || null;
+  const classNumber = String(formData.get("class_number") ?? "").trim() || null;
 
   if (!fullName) return { error: "กรุณากรอกชื่อ-สกุล" };
   if (!email) return { error: "กรุณากรอกอีเมล" };
@@ -306,6 +324,11 @@ export async function createMemberAction(
       phone,
       user_id_code: userIdCode,
       role,
+      user_type: userType,
+      department_id: departmentId,
+      class_level_id: classLevelId,
+      room_level_id: roomLevelId,
+      class_group_id: classGroupId,
     },
   });
 
@@ -317,12 +340,15 @@ export async function createMemberAction(
     .from("users")
     .update({
       status,
-      department,
-      class_level: classLevel,
-      class_number: classNumber,
       borrow_limit: isNaN(borrowLimit) ? 5 : borrowLimit,
       address,
       avatar_url: avatarUrl,
+      class_number: classNumber,
+      user_type: userType,
+      department_id: departmentId,
+      class_level_id: classLevelId,
+      room_level_id: roomLevelId,
+      class_group_id: classGroupId,
     })
     .eq("id", data.user.id);
 
