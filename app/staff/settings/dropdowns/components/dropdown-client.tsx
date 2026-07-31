@@ -196,6 +196,50 @@ export function DropdownClient({
     setReorderedOptions(null);
   }
 
+  function handleRandomizeClassGroupCode() {
+    const dept = departments.find((d) => d.id === formDeptId);
+    const level = classLevels.find((c) => c.id === formClassLevelId);
+    
+    let deptCode = "GP";
+    if (dept) {
+      const name = dept.name;
+      if (name.includes("สารสนเทศ")) deptCode = "IT";
+      else if (name.includes("บัญชี")) deptCode = "AC";
+      else if (name.includes("การตลาด")) deptCode = "MK";
+      else if (name.includes("ไฟฟ้า")) deptCode = "EP";
+      else if (name.includes("อิเล็ก")) deptCode = "EL";
+      else if (name.includes("ยนต์")) deptCode = "ME";
+      else if (name.includes("กลโรงงาน")) deptCode = "MC";
+      else if (name.includes("เชื่อม")) deptCode = "WL";
+      else if (name.includes("คอมพิวเตอร์")) deptCode = "BC";
+      else if (name.includes("ก่อสร้าง")) deptCode = "CE";
+      else if (name.includes("คหกรรม")) deptCode = "HE";
+      else if (name.includes("ศิลป์")) deptCode = "FA";
+      else {
+        deptCode = name.slice(0, 2);
+      }
+    }
+
+    let levelCode = "LV";
+    if (level) {
+      const name = level.name;
+      if (name.includes("ปวช")) {
+        const num = name.replace(/[^0-9]/g, "");
+        levelCode = `PVC${num || "1"}`;
+      } else if (name.includes("ปวส")) {
+        const num = name.replace(/[^0-9]/g, "");
+        levelCode = `PVS${num || "1"}`;
+      } else {
+        levelCode = name.replace(/[\s\.]/g, "").slice(0, 4);
+      }
+    }
+
+    const yearSuffix = formAcademicYear ? formAcademicYear.slice(-2) : "69";
+    const randNum = Math.floor(Math.random() * 90) + 10; // 10 - 99
+    
+    setInputVal(`${deptCode}-${levelCode}-${yearSuffix}-${randNum}`);
+  }
+
   function handleSave(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -590,12 +634,24 @@ export function DropdownClient({
             )}
 
             <div className="space-y-1.5">
-              <label
-                htmlFor="optionName"
-                className="block text-sm font-semibold text-slate-700 dark:text-slate-300"
-              >
-                {activeTab === "class_groups" ? "รหัสกลุ่มเรียน" : "ชื่อตัวเลือก"} <span className="text-price-red">*</span>
-              </label>
+              <div className="flex items-center justify-between">
+                <label
+                  htmlFor="optionName"
+                  className="block text-sm font-semibold text-slate-700 dark:text-slate-300"
+                >
+                  {activeTab === "class_groups" ? "รหัสกลุ่มเรียน" : "ชื่อตัวเลือก"} <span className="text-price-red">*</span>
+                </label>
+                {activeTab === "class_groups" && (
+                  <button
+                    type="button"
+                    onClick={handleRandomizeClassGroupCode}
+                    className="text-xs font-bold text-meb-green hover:text-meb-hover flex items-center gap-1 transition cursor-pointer"
+                  >
+                    <PhosphorIcon name="shuffle" weight="bold" />
+                    สุ่มรหัส
+                  </button>
+                )}
+              </div>
               <div className="relative">
                 <PhosphorIcon
                   name={activeConfig.icon}
