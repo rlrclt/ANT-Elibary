@@ -110,7 +110,6 @@ export function DropdownClient({
         const res = await updateDropdownOptionAction(
           activeTab,
           editingOption.id,
-          editingOption.name,
           trimmed
         );
         if (!res.success) {
@@ -157,7 +156,7 @@ export function DropdownClient({
     setSuccess(null);
 
     startTransition(async () => {
-      const res = await deleteDropdownOptionAction(activeTab, option.id, option.name);
+      const res = await deleteDropdownOptionAction(activeTab, option.id);
       if (!res.success) {
         setError(res.error);
         return;

@@ -70,6 +70,19 @@ export async function getDropdownOptionsAction(): Promise<{
   error: string | null;
 }> {
   const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return {
+      departments: [],
+      classLevels: [],
+      roomLevels: [],
+      error: "กรุณาเข้าสู่ระบบ",
+    };
+  }
 
   try {
     const [deptRes, classRes, roomRes] = await Promise.all([
@@ -145,18 +158,12 @@ export async function addDropdownOptionAction(
 export async function updateDropdownOptionAction(
   table: TableType,
   id: string,
-  oldName: string,
   newName: string,
 ): Promise<{ success: boolean; error: string | null }> {
   const trimmedNewName = newName.trim();
-  const trimmedOldName = oldName.trim();
 
   if (!trimmedNewName) {
     return { success: false, error: "กรุณาระบุชื่อตัวเลือกใหม่" };
-  }
-
-  if (trimmedNewName === trimmedOldName) {
-    return { success: true, error: null };
   }
 
   const { error: adminError, supabase } = await verifyAdmin();
@@ -167,6 +174,26 @@ export async function updateDropdownOptionAction(
   const config = TABLE_MAP[table];
   if (!config) {
     return { success: false, error: "ตารางไม่ถูกต้อง" };
+  }
+
+  // ดึงชื่อเก่าจากฐานข้อมูล เพื่อยืนยันความถูกต้องก่อนอัปเดตและป้องกัน bypass
+  const { data: existingData, error: fetchError } = await supabase
+    .from(config.dbTable)
+    .select("name")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (fetchError || !existingData) {
+    return {
+      success: false,
+      error: fetchError?.message || "ไม่พบตัวเลือกที่ต้องการแก้ไข",
+    };
+  }
+
+  const oldName = existingData.name.trim();
+
+  if (trimmedNewName === oldName) {
+    return { success: true, error: null };
   }
 
   // 1. อัปเดตชื่อในตารางตัวเลือก
@@ -186,11 +213,14 @@ export async function updateDropdownOptionAction(
   const { error: userUpdateError } = await supabase
     .from("users")
     .update({ [config.userCol]: trimmedNewName })
-    .eq(config.userCol, trimmedOldName);
+    .eq(config.userCol, oldName);
 
   if (userUpdateError) {
     console.error(`Failed to cascade rename to users table:`, userUpdateError);
-    // ไม่บล็อกการทำงานหลัก แต่บันทึก log ไว้
+    return {
+      success: false,
+      error: `ไม่สามารถปรับปรุงข้อมูลผู้ใช้ที่เกี่ยวข้องได้: ${userUpdateError.message}`,
+    };
   }
 
   revalidatePath("/staff/settings/dropdowns");
@@ -204,10 +234,7 @@ export async function updateDropdownOptionAction(
 export async function deleteDropdownOptionAction(
   table: TableType,
   id: string,
-  name: string,
 ): Promise<{ success: boolean; error: string | null }> {
-  const trimmedName = name.trim();
-
   const { error: adminError, supabase } = await verifyAdmin();
   if (adminError || !supabase) {
     return { success: false, error: adminError };
@@ -218,11 +245,27 @@ export async function deleteDropdownOptionAction(
     return { success: false, error: "ตารางไม่ถูกต้อง" };
   }
 
+  // ดึงชื่อเก่าจากฐานข้อมูล เพื่อเช็คว่ามีการใช้งานจริงหรือไม่ (หลีกเลี่ยงการเชื่อข้อมูลจาก Client)
+  const { data: existingData, error: fetchError } = await supabase
+    .from(config.dbTable)
+    .select("name")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (fetchError || !existingData) {
+    return {
+      success: false,
+      error: fetchError?.message || "ไม่พบตัวเลือกที่ต้องการลบ",
+    };
+  }
+
+  const name = existingData.name.trim();
+
   // เช็คว่ามีผู้ใช้งานใช้ค่านี้อยู่ในตาราง users หรือไม่
   const { count, error: countError } = await supabase
     .from("users")
     .select("*", { count: "exact", head: true })
-    .eq(config.userCol, trimmedName);
+    .eq(config.userCol, name);
 
   if (countError) {
     return { success: false, error: countError.message };
