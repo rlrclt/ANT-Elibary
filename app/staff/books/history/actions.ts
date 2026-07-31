@@ -54,17 +54,17 @@ export async function getHistoryDataAction(): Promise<{
       remark,
       extension_count,
       handled_by,
-      user:users (
+      user:users!borrow_records_user_id_fkey (
         full_name,
         user_id_code,
         department,
         class_level,
         gender
       ),
-      book_copy:book_copies (
+      book_copy:book_copies!borrow_records_book_copy_id_fkey (
         barcode,
         status,
-        book:books (
+        book:books!book_copies_book_id_fkey (
           title,
           book_code,
           cover_image_url
