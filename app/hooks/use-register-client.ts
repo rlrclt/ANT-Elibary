@@ -126,6 +126,8 @@ export function useRegisterClient() {
       return;
     }
 
+    const gender = String(formData.get("gender") ?? "not_specified").trim();
+
     const result = await supabase.auth.signUp({
       email,
       password,
@@ -141,6 +143,7 @@ export function useRegisterClient() {
           room_level_id: userType === "student" ? roomLevelId : null,
           class_group_id: userType === "student" ? classGroupId : null,
           address: userType === "external" ? address : null,
+          gender: gender,
         },
       },
     });

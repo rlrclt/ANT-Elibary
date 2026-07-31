@@ -113,6 +113,13 @@ export function BooksClient({
               <PhosphorIcon name="printer" className="text-base" />
               พิมพ์บาร์โค้ด
             </Link>
+            <Link
+              href="/staff/books/history"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-gray-50 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-md border border-gray-200 dark:border-border-base transition"
+            >
+              <PhosphorIcon name="chart-pie-slice" className="text-base" />
+              รายงานยืม-คืน
+            </Link>
             <button
               onClick={() => setRegisterOpen(true)}
               className="btn-cta inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-white bg-meb-green hover:bg-meb-hover rounded-md shadow-sm"

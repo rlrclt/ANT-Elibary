@@ -199,6 +199,23 @@ export function CreateMemberModal({
               />
             </div>
 
+            {/* Gender */}
+            <div className="md:col-span-3">
+              <label className="block text-sm font-medium text-forest dark:text-slate-100 mb-1.5">
+                เพศ <span className="text-terracotta">*</span>
+              </label>
+              <select
+                name="gender"
+                defaultValue="not_specified"
+                className="w-full pl-3 pr-3 py-2.5 text-sm bg-white dark:bg-card-bg border border-gray-200 dark:border-border-base rounded-md outline-none focus:border-meb-green focus:ring-2 focus:ring-meb-light text-forest dark:text-slate-100"
+              >
+                <option value="not_specified">-- เลือกเพศ --</option>
+                <option value="male">ชาย (Male)</option>
+                <option value="female">หญิง (Female)</option>
+                <option value="other">อื่นๆ (Other)</option>
+              </select>
+            </div>
+
             {/* User ID Code */}
             <div className="md:col-span-3">
               <label className="block text-sm font-medium text-forest dark:text-slate-100 mb-1.5">

@@ -17,9 +17,16 @@ type ProfileFormProps = {
 };
 
 const roleLabel = (role: string): string => {
-  if (role === "admin") return "ผู้ดูแลระบบ";
+  if (role === "admin") return "ผู้ดูแล (Admin)";
   if (role === "staff") return "เจ้าหน้าที่";
-  return "นักศึกษา";
+  return "นักเรียน/นักศึกษา";
+};
+
+const genderLabel = (gender?: string): string => {
+  if (gender === "male") return "ชาย (Male)";
+  if (gender === "female") return "หญิง (Female)";
+  if (gender === "other") return "อื่นๆ (Other)";
+  return "ไม่ระบุ (Not Specified)";
 };
 
 /**
@@ -44,6 +51,7 @@ export function ProfileForm({
   const [selectedClassLevelId, setSelectedClassLevelId] = useState(initialProfile.class_level_id || "");
   const [selectedRoomLevelId, setSelectedRoomLevelId] = useState(initialProfile.room_level_id || "");
   const [selectedClassGroupId, setSelectedClassGroupId] = useState(initialProfile.class_group_id || "");
+  const [selectedGender, setSelectedGender] = useState(initialProfile.gender || "not_specified");
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -101,6 +109,7 @@ export function ProfileForm({
           <InfoRow label="รหัสสมาชิก" value={initialProfile.user_id_code} icon="identification-card" />
           <InfoRow label="อีเมล" value={initialProfile.email || "—"} icon="envelope-simple" hint="เปลี่ยนในแท็บความปลอดภัย" />
           <InfoRow label="เบอร์โทรศัพท์" value={initialProfile.phone || "—"} icon="phone" />
+          <InfoRow label="เพศ" value={genderLabel(initialProfile.gender)} icon="gender-interstellar" />
           
           {userType !== "external" && (
             <InfoRow label="แผนก / สังกัด" value={initialProfile.department || "—"} icon="buildings" />
@@ -192,6 +201,20 @@ export function ProfileForm({
           placeholder="08xxxxxxxx"
           icon="phone"
           defaultValue={initialProfile.phone}
+        />
+        <SelectField
+          label="เพศ"
+          name="gender"
+          required
+          value={selectedGender}
+          onChange={(e) => setSelectedGender(e.target.value)}
+          options={[
+            { value: "not_specified", label: "-- ระบุเพศ --" },
+            { value: "male", label: "ชาย (Male)" },
+            { value: "female", label: "หญิง (Female)" },
+            { value: "other", label: "อื่นๆ (Other)" },
+          ]}
+          icon="gender-interstellar"
         />
         {userType !== "external" && (
           <SelectField

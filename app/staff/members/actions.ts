@@ -34,6 +34,7 @@ export type User = {
   room_level: string | null;
   class_group_id: string | null;
   class_group: string | null;
+  gender: string | null;
 };
 
 export type UserStats = {
@@ -58,7 +59,7 @@ export async function getMembersAction(filters?: MemberFilters): Promise<{
   let query = supabase
     .from("users")
     .select(
-      "id, user_id_code, full_name, email, department, class_level, class_number, role, status, borrow_limit, fine_balance, phone, avatar_url, address, created_at, user_type, department_id, class_level_id, room_level_id, room_level, class_group_id, class_group",
+      "id, user_id_code, full_name, email, department, class_level, class_number, role, status, borrow_limit, fine_balance, phone, avatar_url, address, created_at, user_type, department_id, class_level_id, room_level_id, room_level, class_group_id, class_group, gender",
     )
     .order("created_at", { ascending: false });
 
@@ -145,6 +146,7 @@ export async function updateMemberAction(
   const roomLevelId = String(formData.get("room_level_id") ?? "").trim() || null;
   const classGroupId = String(formData.get("class_group_id") ?? "").trim() || null;
   const classNumber = String(formData.get("class_number") ?? "").trim() || null;
+  const gender = String(formData.get("gender") ?? "not_specified").trim();
 
   // 1. ดึงข้อมูลเดิมเพื่อตรวจสอบการเปลี่ยนแปลง
   const { data: oldUser, error: fetchError } = await adminClient
@@ -187,6 +189,7 @@ export async function updateMemberAction(
       full_name: fullName,
       phone,
       role,
+      gender,
     },
   };
 
@@ -220,6 +223,7 @@ export async function updateMemberAction(
       room_level_id: roomLevelId,
       class_group_id: classGroupId,
       class_number: classNumber,
+      gender,
     })
     .eq("id", id);
 
@@ -286,6 +290,7 @@ export async function createMemberAction(
   const roomLevelId = String(formData.get("room_level_id") ?? "").trim() || null;
   const classGroupId = String(formData.get("class_group_id") ?? "").trim() || null;
   const classNumber = String(formData.get("class_number") ?? "").trim() || null;
+  const gender = String(formData.get("gender") ?? "not_specified").trim();
 
   if (!fullName) return { error: "กรุณากรอกชื่อ-สกุล" };
   if (!email) return { error: "กรุณากรอกอีเมล" };
@@ -329,6 +334,7 @@ export async function createMemberAction(
       class_level_id: classLevelId,
       room_level_id: roomLevelId,
       class_group_id: classGroupId,
+      gender,
     },
   });
 
@@ -349,6 +355,7 @@ export async function createMemberAction(
       class_level_id: classLevelId,
       room_level_id: roomLevelId,
       class_group_id: classGroupId,
+      gender,
     })
     .eq("id", data.user.id);
 

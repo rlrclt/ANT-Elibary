@@ -97,6 +97,12 @@ export default async function StaffLayout({
           >
             <PhosphorIcon name="arrow-clock" /> ยืม-คืน
           </Link>
+          <Link
+            href="/staff/books/history"
+            className="px-4 py-1.5 text-gray-600 hover:bg-gray-50 font-medium text-sm rounded-full border border-gray-200 flex items-center gap-1.5 transition-colors shrink-0"
+          >
+            <PhosphorIcon name="chart-pie-slice" /> รายงานยืม-คืน
+          </Link>
         </div>
       </nav>
 

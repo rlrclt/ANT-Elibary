@@ -130,6 +130,20 @@ export default function RegisterPage() {
             helper="ใช้สำหรับติดต่อเรื่องการยืม-คืน (ไม่บังคับ)"
           />
 
+          {/* เพศ */}
+          <SelectField
+            label="เพศ"
+            name="gender"
+            required
+            options={[
+              { value: "not_specified", label: "-- ระบุเพศ --" },
+              { value: "male", label: "ชาย (Male)" },
+              { value: "female", label: "หญิง (Female)" },
+              { value: "other", label: "อื่นๆ (Other)" },
+            ]}
+            icon="gender-interstellar"
+          />
+
           {/* ประเภทผู้ใช้งาน */}
           <SelectField
             label="ประเภทผู้ใช้งาน"

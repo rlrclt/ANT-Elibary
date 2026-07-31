@@ -57,6 +57,8 @@ export async function updateStaffProfileAction(
   const roomLevelId = String(formData.get("room_level_id") ?? "").trim() || null;
   const classGroupId = String(formData.get("class_group_id") ?? "").trim() || null;
 
+  const gender = String(formData.get("gender") ?? "not_specified").trim();
+
   const { error } = await supabase
     .from("users")
     .update({
@@ -69,6 +71,7 @@ export async function updateStaffProfileAction(
       class_level_id: classLevelId,
       room_level_id: roomLevelId,
       class_group_id: classGroupId,
+      gender: gender,
     })
     .eq("id", user.id);
 

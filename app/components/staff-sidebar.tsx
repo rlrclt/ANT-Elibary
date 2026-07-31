@@ -52,6 +52,7 @@ export function StaffSidebar({
     { href: "/staff/books", label: "จัดการหนังสือ", icon: "books" },
     { href: "/staff/members", label: "จัดการสมาชิก", icon: "users" },
     { href: "/staff/loans", label: "ยืม-คืน", icon: "squares-four" },
+    { href: "/staff/books/history", label: "รายงานยืม-คืน", icon: "chart-pie-slice" },
     { href: "/staff/access-logs", label: "การเข้าใช้ห้องสมุด", icon: "door-open" },
     { href: "/staff/announcements", label: "จัดการประกาศ", icon: "megaphone" },
     { href: "/staff/fines", label: "ค่าปรับ + QR", icon: "currency-circle-dollar" },

@@ -56,6 +56,7 @@ export default async function StaffSettingsPage() {
         room_level: profile.room_level ?? "",
         class_group_id: profile.class_group_id,
         class_group: profile.class_group,
+        gender: profile.gender ?? "not_specified",
       }}
       userEmail={user.email ?? null}
       departments={dropdownsRes.departments || []}

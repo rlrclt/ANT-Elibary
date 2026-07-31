@@ -31,6 +31,7 @@ export type StaffProfile = {
   room_level?: string;
   class_group_id?: string;
   class_group?: string;
+  gender?: string;
 };
 
 type SettingsClientProps = {

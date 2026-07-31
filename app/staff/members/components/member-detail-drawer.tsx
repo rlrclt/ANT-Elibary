@@ -76,6 +76,7 @@ export function MemberDetailDrawer({
   const [selectedClassLevelId, setSelectedClassLevelId] = useState("");
   const [selectedRoomLevelId, setSelectedRoomLevelId] = useState("");
   const [selectedClassGroupId, setSelectedClassGroupId] = useState("");
+  const [selectedGender, setSelectedGender] = useState("");
 
   useEffect(() => {
     if (user) {
@@ -84,6 +85,7 @@ export function MemberDetailDrawer({
       setSelectedClassLevelId(user.class_level_id || "");
       setSelectedRoomLevelId(user.room_level_id || "");
       setSelectedClassGroupId(user.class_group_id || "");
+      setSelectedGender(user.gender || "not_specified");
       setCurrentStatus(null);
     }
   }, [user]);
@@ -266,6 +268,25 @@ export function MemberDetailDrawer({
                     placeholder="08x-xxx-xxxx"
                     className="w-full pl-3 pr-3 py-2.5 text-sm bg-white dark:bg-card-bg border border-gray-200 dark:border-border-base rounded-md outline-none focus:border-meb-green focus:ring-2 focus:ring-meb-light text-forest dark:text-slate-100"
                   />
+                </div>
+
+                {/* Gender */}
+                <div className="md:col-span-3">
+                  <label className="block text-sm font-medium text-forest dark:text-slate-100 mb-1.5">
+                    เพศ <span className="text-terracotta">*</span>
+                  </label>
+                  <select
+                    name="gender"
+                    value={selectedGender}
+                    onChange={(e) => setSelectedGender(e.target.value)}
+                    className="w-full pl-3 pr-3 py-2.5 text-sm bg-white dark:bg-card-bg border border-gray-200 dark:border-border-base rounded-md outline-none focus:border-meb-green focus:ring-2 focus:ring-meb-light text-forest dark:text-slate-100"
+                    required
+                  >
+                    <option value="not_specified">-- เลือกเพศ --</option>
+                    <option value="male">ชาย (Male)</option>
+                    <option value="female">หญิง (Female)</option>
+                    <option value="other">อื่นๆ (Other)</option>
+                  </select>
                 </div>
 
                 {/* User ID code (readonly) */}
