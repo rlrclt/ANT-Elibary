@@ -86,3 +86,68 @@ export function SubmitButton({ children, loading }: SubmitButtonProps) {
     </button>
   );
 }
+
+type SelectFieldProps = {
+  label: string;
+  name: string;
+  options: (string | { value: string; label: string })[];
+  required?: boolean;
+  icon?: string;
+  value?: string;
+  onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  helper?: ReactNode;
+};
+
+export function SelectField({
+  label,
+  name,
+  options,
+  required,
+  icon,
+  value,
+  onChange,
+  helper,
+}: SelectFieldProps) {
+  return (
+    <div className="mb-4">
+      <label
+        htmlFor={name}
+        className="block text-sm font-medium text-forest mb-1.5"
+      >
+        {label}
+        {required && <span className="text-terracotta ml-0.5">*</span>}
+      </label>
+      <div className="relative">
+        {icon && (
+          <PhosphorIcon
+            name={icon}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg pointer-events-none"
+          />
+        )}
+        <select
+          id={name}
+          name={name}
+          required={required}
+          value={value}
+          onChange={onChange}
+          className={`w-full ${icon ? "pl-10" : "pl-3"} pr-10 py-2.5 text-sm bg-white border border-gray-200 rounded-md outline-none transition focus:border-meb-green focus:ring-2 focus:ring-meb-light appearance-none`}
+        >
+          <option value="">-- เลือก{label} --</option>
+          {options.map((opt) => {
+            const val = typeof opt === "string" ? opt : opt.value;
+            const lbl = typeof opt === "string" ? opt : opt.label;
+            return (
+              <option key={val} value={val}>
+                {lbl}
+              </option>
+            );
+          })}
+        </select>
+        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
+          <PhosphorIcon name="caret-down" />
+        </div>
+      </div>
+      {helper && <p className="text-xs text-slate-500 mt-1.5">{helper}</p>}
+    </div>
+  );
+}
