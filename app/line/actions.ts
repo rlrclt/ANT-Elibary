@@ -116,7 +116,11 @@ export async function claimLineLinkTokenAction(
 }
 
 // ---------- 3. unlinkLineAccount ----------
-/** ยกเลิกเชื่อมต่อ LINE ของ user ปัจจุบัน */
+/**
+ * ยกเลิกเชื่อมต่อ LINE ของ user ปัจจุบัน
+ * - ลบ line_user_id ใน users
+ * - ลบ line_link_tokens ที่เคยสร้างสำหรับ line_user_id นี้
+ */
 export async function unlinkLineAccountAction(): Promise<{
   error: string | null;
 }> {
@@ -126,12 +130,31 @@ export async function unlinkLineAccountAction(): Promise<{
   } = await supabase.auth.getUser();
   if (!user) return { error: "กรุณาเข้าสู่ระบบ" };
 
+  // ดึง line_user_id ปัจจุบันก่อนลบ (เพื่อใช้ลบ line_link_tokens)
+  const { data: profile } = await supabase
+    .from("users")
+    .select("line_user_id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const lineUserId = profile?.line_user_id as string | null;
+
+  // 1. ลบ line_user_id ใน users
   const { error } = await supabase
     .from("users")
     .update({ line_user_id: null })
     .eq("id", user.id);
 
   if (error) return { error: error.message };
+
+  // 2. ลบ line_link_tokens ที่เกี่ยวข้องกับ line_user_id นี้ (ใช้ admin client)
+  if (lineUserId) {
+    const admin = createAdminClient();
+    await admin
+      .from("line_link_tokens")
+      .delete()
+      .eq("line_user_id", lineUserId);
+  }
 
   revalidatePath("/member/profile");
   return { error: null };

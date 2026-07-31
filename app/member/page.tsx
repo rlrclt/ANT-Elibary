@@ -1,5 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
-import { BannerCarousel } from "./components/banner-carousel";
+import { BannerCarousel, type BannerSlide } from "./components/banner-carousel";
 import { SectionWrapper } from "./components/section-wrapper";
 import {
   MemberBookCard,
@@ -33,22 +33,6 @@ function toMemberBook(
     isFavorited: favSet.has(b.id),
   };
 }
-
-const bannerSlides = [
-  {
-    id: "b-1",
-    badge: "เปิดเทอมใหม่ 2569",
-    headline: "คลังปัญญาดิจิทัลเพื่ออนาคตสายอาชีพ",
-    subtitle:
-      "อ่านตำราเรียน คู่มือช่าง และอีบุ๊กคุณภาพได้ทุกที่ทุกเวลา ฟรีสำหรับนักศึกษาวิทยาลัยเทคนิคอำนาจเจริญ",
-  },
-  {
-    id: "b-2",
-    badge: "ห้องสมุดดิจิทัล",
-    headline: "ค้นหา ยืม อ่าน ได้ทุกแผนกวิชา",
-    subtitle: "ตำราเรียนและคู่มือช่างคุณภาพ ครบทุกหมวดหมู่ พร้อมให้บริการ 24 ชั่วโมง",
-  },
-];
 
 /**
  * หน้าหลักสมาชิก (member home)
@@ -118,6 +102,23 @@ export default async function MemberPage() {
       // table ไม่มี → ข้ามไป
     }
   }
+
+  // ดึง banners ที่ active จาก DB
+  const { data: bannersData } = await supabase
+    .from("banners")
+    .select("id, badge, headline, subtitle, image_url, action_url, action_label")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+
+  const bannerSlides: BannerSlide[] = (bannersData ?? []).map((b: any) => ({
+    id: b.id,
+    badge: b.badge ?? "",
+    headline: b.headline,
+    subtitle: b.subtitle ?? "",
+    imageUrl: b.image_url ?? undefined,
+    actionUrl: b.action_url ?? undefined,
+    actionLabel: b.action_label ?? undefined,
+  }));
 
   // group หนังสือตาม category_id — แต่ละหมวดเก็บแค่ 5 เล่มแรก
   const booksByCategory = new Map<string, MemberBook[]>();

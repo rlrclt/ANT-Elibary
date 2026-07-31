@@ -8,7 +8,7 @@ import {
   memberReturnAction,
   type MemberBorrowRecord,
 } from "../actions";
-import { rateBookAction } from "../../favorites/actions";
+import { rateBookAction, getMyRatingAction } from "../../favorites/actions";
 
 type MyBorrowsProps = {
   active: MemberBorrowRecord[];
@@ -110,12 +110,13 @@ export function MyBorrows({ active, history, onRefresh }: MyBorrowsProps) {
 
   // state สำหรับ modal คืนหนังสือ
   const [returnModal, setReturnModal] = useState<MemberBorrowRecord | null>(null);
-  const [condition, setCondition] = useState("good");
-  const [fineReason, setFineReason] = useState("");
-  const [manualFine, setManualFine] = useState("");
-  const [rating, setRating] = useState(0);
-  const [hoverRating, setHoverRating] = useState(0);
   const [returnPending, startReturnTransition] = useTransition();
+
+  // state สำหรับ popup ให้คะแนน (หลังคืนสำเร็จ)
+  const [ratingBookId, setRatingBookId] = useState<string | null>(null);
+  const [popupRating, setPopupRating] = useState(0);
+  const [popupHover, setPopupHover] = useState(0);
+  const [ratingPending, startRatingTransition] = useTransition();
 
   // ต่ออายุ
   async function handleExtend(recordId: string) {
@@ -138,11 +139,6 @@ export function MyBorrows({ active, history, onRefresh }: MyBorrowsProps) {
   // เปิด modal คืนหนังสือ (ไม่คืนทันที)
   function openReturnModal(record: MemberBorrowRecord) {
     setReturnModal(record);
-    setCondition("good");
-    setFineReason("");
-    setManualFine("");
-    setRating(0);
-    setHoverRating(0);
   }
 
   // ยืนยันคืนหนังสือจาก modal
@@ -153,22 +149,8 @@ export function MyBorrows({ active, history, onRefresh }: MyBorrowsProps) {
     startReturnTransition(async () => {
       const formData = new FormData();
       formData.set("record_id", returnModal.id);
-      formData.set("condition", condition);
-      if (fineReason) formData.set("fine_reason", fineReason);
-      if (manualFine) formData.set("fine_amount", manualFine);
 
       const res = await memberReturnAction(formData);
-
-      // ให้คะแนนหนังสือถ้ามี
-      if (rating > 0 && !res.error) {
-        const bookId = (returnModal as any).book_copy?.book?.id;
-        if (bookId) {
-          const rateForm = new FormData();
-          rateForm.set("bookId", bookId);
-          rateForm.set("rating", String(rating));
-          await rateBookAction(rateForm);
-        }
-      }
 
       if (res.error) {
         setToast({ type: "error", message: res.error });
@@ -182,6 +164,22 @@ export function MyBorrows({ active, history, onRefresh }: MyBorrowsProps) {
         startTransition(() => {
           onRefresh();
         });
+
+        // หลังคืนสำเร็จ → เช็คว่าเคยให้คะแนนเล่มนี้หรือไม่
+        const bookId = (returnModal as any).book_copy?.book?.id;
+        if (bookId) {
+          try {
+            const checkForm = new FormData();
+            checkForm.set("bookId", bookId);
+            const rateRes = await getMyRatingAction(bookId);
+            // ถ้ายังไม่เคยให้คะแนน (rating = 0) → เปิด popup ให้คะแนน
+            if (!rateRes.data?.rating || rateRes.data.rating === 0) {
+              setRatingBookId(bookId);
+            }
+          } catch {
+            // ignore — ไม่บังคับให้คะแนน
+          }
+        }
       }
       setTimeout(() => setToast(null), 5000);
     });
@@ -580,115 +578,23 @@ export function MyBorrows({ active, history, onRefresh }: MyBorrowsProps) {
               </div>
             </div>
 
-            {/* สภาพหนังสือ */}
-            <div>
-              <label className="block text-sm font-medium text-forest dark:text-slate-100 mb-2">
-                สภาพหนังสือ
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {[
-                  { value: "new", label: "มือหนึ่ง", color: "meb-green" },
-                  { value: "good", label: "สภาพดี", color: "blue-600" },
-                  { value: "fair", label: "พอใช้", color: "amber-600" },
-                  { value: "poor", label: "ชำรุด", color: "price-red" },
-                ].map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setCondition(opt.value)}
-                    className={`px-3 py-2 text-xs font-bold rounded-md border-2 transition ${
-                      condition === opt.value
-                        ? "border-meb-green bg-meb-light/50 text-meb-green"
-                        : "border-gray-200 dark:border-border-base text-slate-600 dark:text-slate-400 hover:border-meb-green/30"
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-              {condition === "poor" && (
-                <p className="text-xs text-price-red mt-2 flex items-center gap-1">
-                  <PhosphorIcon name="warning-circle" weight="fill" className="text-sm" />
-                  หนังสือชำรุด — อาจมีค่าปรับ
+            {/* แสดงค่าปรับ (ถ้าเกินกำหนด) */}
+            {getRemainingDays(returnModal.due_date) < 0 && (
+              <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <PhosphorIcon name="warning-circle" weight="fill" className="text-price-red text-sm" />
+                  <span className="text-xs font-bold text-price-red">
+                    ค่าปรับล่าช้า
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-300">
+                  เกินกำหนด {Math.abs(getRemainingDays(returnModal.due_date))} วัน — ค่าปรับจะคำนวณอัตโนมัติตามอัตราที่กำหนด
                 </p>
-              )}
-            </div>
-
-            {/* เหตุผลค่าปรับ + ค่าปรับ manual */}
-            {(condition === "poor" || getRemainingDays(returnModal.due_date) < 0) && (
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-forest dark:text-slate-100 mb-1.5">
-                    เหตุผลค่าปรับ
-                  </label>
-                  <select
-                    value={fineReason}
-                    onChange={(e) => setFineReason(e.target.value)}
-                    className="w-full px-3 py-2 text-sm bg-white dark:bg-black/30 border border-gray-200 dark:border-border-base rounded-md outline-none focus:border-meb-green dark:text-slate-100"
-                  >
-                    <option value="">— อัตโนมัติ —</option>
-                    <option value="overdue">คืนช้า</option>
-                    <option value="damaged">ชำรุด</option>
-                    <option value="lost">สูญหาย</option>
-                    <option value="other">อื่นๆ</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-forest dark:text-slate-100 mb-1.5">
-                    ค่าปรับ (บาท)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={manualFine}
-                    onChange={(e) => setManualFine(e.target.value)}
-                    placeholder="อัตโนมัติ"
-                    className="w-full px-3 py-2 text-sm bg-white dark:bg-black/30 border border-gray-200 dark:border-border-base rounded-md outline-none focus:border-meb-green dark:text-slate-100"
-                  />
-                </div>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  * ระบบจะคำนวณและแสดงยอดค่าปรับหลังยืนยันการคืน
+                </p>
               </div>
             )}
-
-            {/* ให้คะแนนหนังสือ */}
-            <div>
-              <label className="block text-sm font-medium text-forest dark:text-slate-100 mb-2">
-                ให้คะแนนหนังสือเล่มนี้
-              </label>
-              <div className="flex items-center gap-1">
-                {Array.from({ length: 5 }).map((_, i) => {
-                  const starValue = i + 1;
-                  return (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => setRating(starValue)}
-                      onMouseEnter={() => setHoverRating(starValue)}
-                      onMouseLeave={() => setHoverRating(0)}
-                      className="text-2xl transition"
-                    >
-                      <PhosphorIcon
-                        name="star"
-                        weight={(hoverRating || rating) >= starValue ? "fill" : "regular"}
-                        className={
-                          (hoverRating || rating) >= starValue
-                            ? "text-yellow-400"
-                            : "text-slate-300 dark:text-slate-600"
-                        }
-                      />
-                    </button>
-                  );
-                })}
-                {rating > 0 && (
-                  <span className="text-xs text-slate-500 dark:text-slate-400 ml-2">
-                    คุณให้ {rating} ดาว
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-slate-400 mt-1.5">
-                ขอบคุณที่ให้คะแนน — จะช่วยให้สมาชิกคนอื่นรู้จักหนังสือเล่มนี้
-              </p>
-            </div>
 
             {/* ปุ่มยืนยัน */}
             <div className="flex gap-2 pt-2">
@@ -721,6 +627,90 @@ export function MyBorrows({ active, history, onRefresh }: MyBorrowsProps) {
           </div>
         )}
       </Modal>
+
+      {/* ====== Popup ให้คะแนนหนังสือ (หลังคืนสำเร็จ) ====== */}
+      {ratingBookId && (
+        <Modal
+          open={ratingBookId !== null}
+          onClose={() => setRatingBookId(null)}
+          title="ให้คะแนนหนังสือ"
+        >
+          <div className="p-5 space-y-4">
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              ขอบคุณที่คืนหนังสือ — ช่วยให้คะแนนเพื่อแนะนำสมาชิกคนอื่น
+            </p>
+
+            {/* ดาว 5 ดวง */}
+            <div className="flex items-center justify-center gap-2 py-2">
+              {Array.from({ length: 5 }).map((_, i) => {
+                const starValue = i + 1;
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setPopupRating(starValue)}
+                    onMouseEnter={() => setPopupHover(starValue)}
+                    onMouseLeave={() => setPopupHover(0)}
+                    className="text-4xl transition hover:scale-110"
+                  >
+                    <PhosphorIcon
+                      name="star"
+                      weight={(popupHover || popupRating) >= starValue ? "fill" : "regular"}
+                      className={
+                        (popupHover || popupRating) >= starValue
+                          ? "text-amber-400"
+                          : "text-slate-300 dark:text-slate-600"
+                      }
+                    />
+                  </button>
+                );
+              })}
+            </div>
+
+            {popupRating > 0 && (
+              <p className="text-center text-xs text-slate-500 dark:text-slate-400">
+                คุณให้ {popupRating} ดาว
+              </p>
+            )}
+
+            {/* ปุ่ม */}
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                disabled={popupRating === 0 || ratingPending}
+                onClick={() => {
+                  startRatingTransition(async () => {
+                    const formData = new FormData();
+                    formData.set("bookId", ratingBookId);
+                    formData.set("rating", String(popupRating));
+                    await rateBookAction(formData);
+                    setRatingBookId(null);
+                    setPopupRating(0);
+                    setPopupHover(0);
+                  });
+                }}
+                className="btn-cta flex-1 inline-flex items-center justify-center gap-2 bg-meb-green hover:bg-meb-hover text-white font-bold px-4 py-3 rounded-md text-sm shadow-sm disabled:opacity-60"
+              >
+                {ratingPending ? (
+                  <PhosphorIcon name="circle-notch" className="animate-spin" />
+                ) : (
+                  <>
+                    <PhosphorIcon name="check-circle" weight="fill" />
+                    ส่งคะแนน
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setRatingBookId(null)}
+                className="px-5 py-3 text-sm font-medium text-slate-600 dark:text-slate-300 bg-gray-50 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-md border border-gray-200 dark:border-border-base transition"
+              >
+                ข้ามไป
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* ====== Modal รายละเอียดการยืม ====== */}
       <Modal

@@ -2,11 +2,18 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import {
+  enqueueLineNotification,
+  sendQueuedLineNotification,
+} from "@/utils/line-notify";
 
 /**
  * Server Actions สำหรับ /member/loans (ระบบยืม-คืนสำหรับสมาชิก)
  * ใช้ session ของสมาชิกที่ล็อกอินอยู่ ไม่ต้องส่ง user_id มาจาก client
  * จัดการ borrow_records, book_copies, users (fine_balance), fine_payments
+ *
+ * การแจ้งเตือน LINE: ใช้ after() + Notification Queue (เหมือนฝั่ง staff)
  */
 
 // อัตราค่าปรับต่อวัน (บาท) — ค่าปรับกรณีคืนเกินกำหนด
@@ -391,6 +398,44 @@ export async function memberBorrowAction(
   }
 
   const bookTitle = (copy as any).books?.title ?? "ไม่ระบุชื่อ";
+
+  // (f) บันทึก Notification Queue + ส่ง LINE แบบ realtime ผ่าน after()
+  const { data: memberInfo } = await supabase
+    .from("users")
+    .select("full_name")
+    .eq("id", user.id)
+    .maybeSingle();
+  const memberName = (memberInfo as any)?.full_name ?? "-";
+
+  const borrowDateStr = new Date().toLocaleDateString("th-TH", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+  const dueDateStr = dueDate.toLocaleDateString("th-TH", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+
+  const queueId = await enqueueLineNotification(user.id, {
+    template: "borrow",
+    title: "ยืมหนังสือสำเร็จ",
+    body: `คุณยืม "${bookTitle}" ครบกำหนดคืน ${dueDateStr}`,
+    action_url: "/member/loans",
+    icon: "book-open",
+    category: "loan",
+    member_name: memberName,
+    book_title: bookTitle,
+    book_copy_no: barcode,
+    borrow_date: borrowDateStr,
+    due_date: dueDateStr,
+  });
+
+  if (queueId) {
+    after(() => sendQueuedLineNotification(queueId));
+  }
+
   revalidatePath("/member/loans");
   return { error: null, recordId: record.id, bookTitle };
 }
@@ -503,28 +548,62 @@ export async function memberReturnAction(
   if (!fullRecord)
     return { error: "ไม่พบรายการยืม", fineAmount: 0, bookTitle: null };
 
-  // (d) คำนวณค่าปรับ: ถ้า due_date < now → daysOverdue * 5 บาท
+  // (d) คำนวณค่าปรับ: ดึง fine_settings จาก DB
   const now = new Date();
   const due = new Date(fullRecord.due_date);
   const diffMs = now.getTime() - due.getTime();
   const daysOverdue = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  let fineAmount = daysOverdue > 0 ? daysOverdue * FINE_PER_DAY : 0;
 
-  // รับค่าจาก form — condition + manual fine override
-  const condition = String(formData.get("condition") ?? "").trim();
-  const manualFineStr = String(formData.get("fine_amount") ?? "").trim();
-  const manualFine = manualFineStr ? parseFloat(manualFineStr) : NaN;
-  const fineReason = String(formData.get("fine_reason") ?? "").trim();
+  // ดึง fine_settings (active row เดียว)
+  let fineAmount = 0;
+  let finalFineReason: string | null = null;
 
-  // ถ้าส่ง fine_amount มา manual → ใช้ค่านั้นแทน
-  if (!isNaN(manualFine) && manualFine >= 0) {
-    fineAmount = manualFine;
-  }
+  const { data: fineSettings } = await supabase
+    .from("fine_settings")
+    .select("overdue_rate, overdue_max_days")
+    .eq("is_active", true)
+    .maybeSingle();
 
-  // กำหนด fine_reason อัตโนมัติถ้าไม่ส่งมา
-  let finalFineReason = fineReason || null;
-  if (fineAmount > 0 && !finalFineReason) {
-    finalFineReason = daysOverdue > 0 ? "overdue" : "damaged";
+  if (fineSettings) {
+    const overdueRate = Number(fineSettings.overdue_rate ?? 5);
+    const maxDays = Number(fineSettings.overdue_max_days ?? 30);
+
+    if (daysOverdue > 0) {
+      // ถ้าเกิน max_days → ปรับเท่าราคาเล่ม (ดึงจาก books)
+      if (daysOverdue >= maxDays) {
+        // ดึงราคาเล่ม — ถ้าไม่มีใช้ overdueRate * maxDays
+        const { data: bookData } = await supabase
+          .from("borrow_records")
+          .select(
+            "book_copies!borrow_records_book_copy_id_fkey ( books ( id ) )",
+          )
+          .eq("id", targetRecordId)
+          .maybeSingle();
+
+        let bookPrice = overdueRate * maxDays; // fallback
+        // ถ้ามี books table มี price column — ดึงมา
+        const bookId = (bookData as any)?.book_copies?.books?.id;
+        if (bookId) {
+          const { data: priceRow } = await supabase
+            .from("books")
+            .select("price")
+            .eq("id", bookId)
+            .maybeSingle();
+          if (priceRow?.price) bookPrice = Number(priceRow.price);
+        }
+        fineAmount = bookPrice;
+        finalFineReason = "overdue";
+      } else {
+        fineAmount = daysOverdue * overdueRate;
+        finalFineReason = "overdue";
+      }
+    }
+  } else {
+    // fallback ถ้าไม่มี fine_settings
+    if (daysOverdue > 0) {
+      fineAmount = daysOverdue * FINE_PER_DAY;
+      finalFineReason = "overdue";
+    }
   }
 
   // (e) UPDATE borrow_record
@@ -540,18 +619,16 @@ export async function memberReturnAction(
 
   if (updErr) return { error: updErr.message, fineAmount: 0, bookTitle: null };
 
-  // (f) UPDATE book_copy status → available + อัปเดต condition ถ้าส่งมา
+  // (f) UPDATE book_copy status → available
   if (copyId) {
-    const copyUpdate: Record<string, unknown> = { status: "available" };
-    if (condition) copyUpdate.condition = condition;
     const { error: copyErr } = await supabase
       .from("book_copies")
-      .update(copyUpdate)
+      .update({ status: "available" })
       .eq("id", copyId);
     if (copyErr) return { error: copyErr.message, fineAmount: 0, bookTitle: null };
   }
 
-  // (g) ถ้ามีค่าปรับ → บวก fine_balance ของสมาชิก
+  // (g) ถ้ามีค่าปรับ → สร้าง fine_payment + บวก fine_balance
   if (fineAmount > 0) {
     const { data: member } = await supabase
       .from("users")
@@ -564,6 +641,74 @@ export async function memberReturnAction(
       .from("users")
       .update({ fine_balance: currentFine + fineAmount })
       .eq("id", user.id);
+
+    // สร้าง fine_payment record (status: pending)
+    await supabase.from("fine_payments").insert({
+      user_id: user.id,
+      borrow_record_id: targetRecordId,
+      fine_type: finalFineReason ?? "overdue",
+      amount: fineAmount,
+      description: `ค่าปรับ${finalFineReason === "overdue" ? `ล่าช้า ${daysOverdue} วัน` : ""}`,
+      payment_method: "transfer",
+      status: "pending",
+    });
+  }
+
+  // (h) บันทึก Notification Queue + ส่ง LINE แบบ realtime ผ่าน after()
+  const { data: memberInfo } = await supabase
+    .from("users")
+    .select("full_name")
+    .eq("id", user.id)
+    .maybeSingle();
+  const memberName = (memberInfo as any)?.full_name ?? "-";
+
+  // ดึง barcode ของ book_copy
+  let copyBarcode = "-";
+  if (copyId) {
+    const { data: copyData } = await supabase
+      .from("book_copies")
+      .select("barcode")
+      .eq("id", copyId)
+      .maybeSingle();
+    copyBarcode = (copyData as any)?.barcode ?? "-";
+  }
+
+  // ดึงวันที่ยืม
+  const { data: borrowData } = await supabase
+    .from("borrow_records")
+    .select("borrowed_at")
+    .eq("id", targetRecordId)
+    .maybeSingle();
+  const borrowDateStr = borrowData?.borrowed_at
+    ? new Date(borrowData.borrowed_at).toLocaleDateString("th-TH", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      })
+    : "-";
+  const returnDateStr = now.toLocaleDateString("th-TH", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+
+  const queueId = await enqueueLineNotification(user.id, {
+    template: "return",
+    title: "คืนหนังสือสำเร็จ",
+    body: `คุณคืน "${bookTitle}" เรียบร้อยแล้ว`,
+    action_url: "/member/loans",
+    icon: "book",
+    category: "loan",
+    member_name: memberName,
+    book_title: bookTitle ?? "หนังสือ",
+    book_copy_no: copyBarcode,
+    borrow_date: borrowDateStr,
+    return_date: returnDateStr,
+    fine_amount: fineAmount,
+  });
+
+  if (queueId) {
+    after(() => sendQueuedLineNotification(queueId));
   }
 
   revalidatePath("/member/loans");
@@ -589,7 +734,7 @@ export async function memberExtendAction(
   // ดึกรายการเพื่อตรวจความเป็นเจ้าของ + extension_count + status
   const { data: record, error: rErr } = await supabase
     .from("borrow_records")
-    .select("id, user_id, due_date, extension_count, status")
+    .select("id, user_id, book_copy_id, due_date, extension_count, status")
     .eq("id", recordId)
     .maybeSingle();
 
@@ -626,6 +771,54 @@ export async function memberExtendAction(
     .eq("id", recordId);
 
   if (updErr) return { error: updErr.message, newDueDate: null };
+
+  // บันทึก Notification Queue + ส่ง LINE แบบ realtime ผ่าน after()
+  const { data: bookInfo } = await supabase
+    .from("book_copies")
+    .select("barcode, books ( title )")
+    .eq("id", record.book_copy_id)
+    .maybeSingle();
+  const bookTitle = (bookInfo as any)?.books?.title ?? "หนังสือ";
+  const copyBarcode = (bookInfo as any)?.barcode ?? "-";
+
+  const { data: memberInfo } = await supabase
+    .from("users")
+    .select("full_name")
+    .eq("id", user.id)
+    .maybeSingle();
+  const memberName = (memberInfo as any)?.full_name ?? "-";
+
+  const oldDueDateStr = new Date(record.due_date).toLocaleDateString("th-TH", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+  const newDueDateStr = new Date(newDue).toLocaleDateString("th-TH", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+
+  const queueId = await enqueueLineNotification(user.id, {
+    template: "renew",
+    title: "ต่ออายุการยืมสำเร็จ",
+    body: `คุณต่ออายุ "${bookTitle}" วันคืนใหม่ ${newDueDateStr}`,
+    action_url: "/member/loans",
+    icon: "clock",
+    category: "loan",
+    member_name: memberName,
+    book_title: bookTitle,
+    book_copy_no: copyBarcode,
+    old_due_date: oldDueDateStr,
+    new_due_date: newDueDateStr,
+    days_extended: EXTENSION_DAYS,
+    extension_count: count,
+    extension_limit: MAX_EXTENSION,
+  });
+
+  if (queueId) {
+    after(() => sendQueuedLineNotification(queueId));
+  }
 
   revalidatePath("/member/loans");
   return { error: null, newDueDate: newDue };

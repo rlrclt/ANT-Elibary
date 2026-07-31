@@ -2,11 +2,22 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import {
+  enqueueLineNotification,
+  sendQueuedLineNotification,
+} from "@/utils/line-notify";
 
 /**
  * Server Actions สำหรับ /staff/loans (ระบบยืม-คืน)
  * ทำงานฝั่ง server ผ่าน supabase server client
  * จัดการ borrow_records, book_copies, users (fine_balance)
+ *
+ * การแจ้งเตือน LINE: ใช้ after() + Notification Queue
+ *   - บันทึก Queue (status=pending) หลังธุรกรรมหลักสำเร็จ
+ *   - after() ส่ง LINE ทันทีหลัง response กลับ (realtime)
+ *   - ถ้าส่งไม่สำเร็จ → คง pending ให้ cron retry อัตโนมัติ
+ *   - การยืม/คืน (Critical) ไม่ขึ้นกับ LINE (Non-Critical)
  */
 
 // ---------- Types ----------
@@ -343,6 +354,57 @@ export async function borrowBookAction(
     return { error: updErr.message, recordId: null };
   }
 
+  // (e) บันทึก Notification Queue + ส่ง LINE แบบ realtime ผ่าน after()
+  // ดึงข้อมูลหนังสือ + สมาชิก + barcode สำหรับ Flex Message
+  const { data: bookInfo } = await supabase
+    .from("book_copies")
+    .select("barcode, books ( title )")
+    .eq("id", copy.id)
+    .maybeSingle();
+  const bookTitle = (bookInfo as any)?.books?.title ?? "หนังสือ";
+  const copyBarcode = (bookInfo as any)?.barcode ?? "-";
+
+  const { data: memberInfo } = await supabase
+    .from("users")
+    .select("full_name")
+    .eq("id", userId)
+    .maybeSingle();
+  const memberName = (memberInfo as any)?.full_name ?? "-";
+
+  const borrowDateStr = new Date().toLocaleDateString("th-TH", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+  const dueDateStr = new Date(dueDate).toLocaleDateString("th-TH", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+
+  const queueId = await enqueueLineNotification(userId, {
+    template: "borrow",
+    title: "ยืมหนังสือสำเร็จ",
+    body: `คุณยืม "${bookTitle}" ครบกำหนดคืน ${dueDateStr}`,
+    action_url: "/member/loans",
+    icon: "book-open",
+    category: "loan",
+    member_name: memberName,
+    book_title: bookTitle,
+    book_copy_no: copyBarcode,
+    borrow_date: borrowDateStr,
+    due_date: dueDateStr,
+  });
+
+  console.log("[borrowAction] enqueue result:", { queueId, userId, bookTitle });
+
+  if (queueId) {
+    // after() ทำงานหลัง response กลับไปแล้ว — ไม่บล็อกการยืม
+    after(() => sendQueuedLineNotification(queueId));
+  } else {
+    console.warn("[borrowAction] enqueue failed — queue will be empty");
+  }
+
   revalidatePath("/staff/loans");
   return { error: null, recordId: record.id };
 }
@@ -417,6 +479,60 @@ export async function returnBookAction(
       .eq("id", record.user_id);
   }
 
+  // (e) บันทึก Notification Queue + ส่ง LINE แบบ realtime ผ่าน after()
+  const { data: bookInfo } = await supabase
+    .from("book_copies")
+    .select("barcode, books ( title )")
+    .eq("id", record.book_copy_id)
+    .maybeSingle();
+  const bookTitle = (bookInfo as any)?.books?.title ?? "หนังสือ";
+  const copyBarcode = (bookInfo as any)?.barcode ?? "-";
+
+  const { data: memberInfo } = await supabase
+    .from("users")
+    .select("full_name")
+    .eq("id", record.user_id)
+    .maybeSingle();
+  const memberName = (memberInfo as any)?.full_name ?? "-";
+
+  // ดึงวันที่ยืมจาก borrow_record
+  const { data: borrowData } = await supabase
+    .from("borrow_records")
+    .select("borrowed_at")
+    .eq("id", recordId)
+    .maybeSingle();
+  const borrowDateStr = borrowData?.borrowed_at
+    ? new Date(borrowData.borrowed_at).toLocaleDateString("th-TH", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      })
+    : "-";
+  const returnDateStr = new Date().toLocaleDateString("th-TH", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+
+  const queueId = await enqueueLineNotification(record.user_id, {
+    template: "return",
+    title: "คืนหนังสือสำเร็จ",
+    body: `คุณคืน "${bookTitle}" เรียบร้อยแล้ว`,
+    action_url: "/member/loans",
+    icon: "book",
+    category: "loan",
+    member_name: memberName,
+    book_title: bookTitle,
+    book_copy_no: copyBarcode,
+    borrow_date: borrowDateStr,
+    return_date: returnDateStr,
+    fine_amount: fineAmount,
+  });
+
+  if (queueId) {
+    after(() => sendQueuedLineNotification(queueId));
+  }
+
   revalidatePath("/staff/loans");
   return { error: null };
 }
@@ -430,10 +546,10 @@ export async function extendDueDateAction(
   const recordId = String(formData.get("record_id") ?? "").trim();
   if (!recordId) return { error: "ไม่พบ ID รายการยืม", newDueDate: null };
 
-  // ดึกรายการเพื่อตรวจ extension_count
+  // ดึกรายการเพื่อตรวจ extension_count + user_id + book_copy_id
   const { data: record, error: rErr } = await supabase
     .from("borrow_records")
-    .select("id, due_date, extension_count, status")
+    .select("id, user_id, book_copy_id, due_date, extension_count, status")
     .eq("id", recordId)
     .maybeSingle();
 
@@ -461,6 +577,54 @@ export async function extendDueDateAction(
     .eq("id", recordId);
 
   if (updErr) return { error: updErr.message, newDueDate: null };
+
+  // บันทึก Notification Queue + ส่ง LINE แบบ realtime ผ่าน after()
+  const { data: bookInfo } = await supabase
+    .from("book_copies")
+    .select("barcode, books ( title )")
+    .eq("id", record.book_copy_id)
+    .maybeSingle();
+  const bookTitle = (bookInfo as any)?.books?.title ?? "หนังสือ";
+  const copyBarcode = (bookInfo as any)?.barcode ?? "-";
+
+  const { data: memberInfo } = await supabase
+    .from("users")
+    .select("full_name")
+    .eq("id", record.user_id)
+    .maybeSingle();
+  const memberName = (memberInfo as any)?.full_name ?? "-";
+
+  const oldDueDateStr = new Date(record.due_date).toLocaleDateString("th-TH", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+  const newDueDateStr = new Date(newDue).toLocaleDateString("th-TH", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+
+  const queueId = await enqueueLineNotification(record.user_id, {
+    template: "renew",
+    title: "ต่ออายุการยืมสำเร็จ",
+    body: `คุณต่ออายุ "${bookTitle}" วันคืนใหม่ ${newDueDateStr}`,
+    action_url: "/member/loans",
+    icon: "clock",
+    category: "loan",
+    member_name: memberName,
+    book_title: bookTitle,
+    book_copy_no: copyBarcode,
+    old_due_date: oldDueDateStr,
+    new_due_date: newDueDateStr,
+    days_extended: 7,
+    extension_count: count,
+    extension_limit: 1,
+  });
+
+  if (queueId) {
+    after(() => sendQueuedLineNotification(queueId));
+  }
 
   revalidatePath("/staff/loans");
   return { error: null, newDueDate: newDue };

@@ -15,10 +15,10 @@ const TABS: Tab[] = [
   { label: "หน้าแรก", href: "/member", icon: "house" },
   { label: "หมวดหมู่ทั้งหมด", href: "/member/categories", icon: "grid-four" },
   { label: "หนังสือที่กำลังยืมอยู่", href: "/member/loans", icon: "book-open" },
+  { label: "ค่าปรับของฉัน", href: "/member/fines", icon: "currency-circle-dollar" },
   { label: "รายการโปรด", href: "/member/favorites", icon: "heart" },
   { label: "เข้าห้องสมุด", href: "/member/access", icon: "door-open" },
-  { label: "ประวัติการยืม-คืน", href: "/member/history", icon: "clock-counter-clockwise" },
-  { label: "ข้อมูลโปรไฟล์", href: "/member/profile", icon: "user" },
+   { label: "ข้อมูลโปรไฟล์", href: "/member/profile", icon: "user" },
 ];
 
 /**

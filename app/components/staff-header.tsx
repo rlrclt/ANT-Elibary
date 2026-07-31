@@ -78,14 +78,7 @@ export function StaffHeader({
           {/* Theme toggle */}
           <ThemeToggle />
 
-          {/* Cart */}
-          <Link
-            href="/staff/borrow"
-            className="relative hidden sm:flex items-center justify-center text-2xl hover:text-meb-light transition-colors focus:outline-none rounded"
-            aria-label="ตะกร้ายืม"
-          >
-            <PhosphorIcon name="shopping-cart-simple" />
-          </Link>
+         
 
           {/* User Profile Dropdown Trigger */}
           <button

@@ -26,6 +26,8 @@ export function RegisterBookModal({ open, onClose, categories }: RegisterBookMod
   const [error, setError] = useState<string | null>(null);
   const [barcodes, setBarcodes] = useState<string[] | null>(null);
   const [pending, startTransition] = useTransition();
+  const [coverUrl, setCoverUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
 
   // เมื่อเปิด modal → ขอ book_code อัตโนมัติ
   useEffect(() => {
@@ -33,11 +35,47 @@ export function RegisterBookModal({ open, onClose, categories }: RegisterBookMod
     setBookCode("");
     setError(null);
     setBarcodes(null);
+    setCoverUrl("");
+    setUploading(false);
     generateBookCodeAction().then((res) => {
       if (res.data) setBookCode(res.data);
       else if (res.error) setError(res.error);
     });
   }, [open]);
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError("ขนาดไฟล์ต้องไม่เกิน 5MB");
+      return;
+    }
+
+    setUploading(true);
+    setError(null);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch("/api/books/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "อัปโหลดล้มเหลว");
+      }
+
+      setCoverUrl(data.url);
+    } catch (err: any) {
+      setError(err.message || "เกิดข้อผิดพลาดในการอัปโหลด");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   // submit ฟอร์ม → เรียก registerBookAction
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -195,13 +233,59 @@ export function RegisterBookModal({ open, onClose, categories }: RegisterBookMod
               helper="รหัสชั้นวางหนังสือ"
             />
 
-            <div className="sm:col-span-2">
-              <TextField
-                label="URL ภาพปก"
-                name="cover_image_url"
-                placeholder="https://..."
-                icon="image"
-              />
+            <div className="sm:col-span-2 space-y-2">
+              <label className="block text-sm font-medium text-forest dark:text-slate-100">
+                ภาพปกหนังสือ
+              </label>
+              <div className="flex gap-3 items-start">
+                {coverUrl ? (
+                  <div className="relative w-16 h-22 rounded border border-gray-200 dark:border-border-base overflow-hidden shrink-0 bg-gray-50 dark:bg-white/5">
+                    <img src={coverUrl} alt="Cover preview" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setCoverUrl("")}
+                      className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 text-white rounded-full p-0.5"
+                      title="ลบรูปภาพ"
+                    >
+                      <PhosphorIcon name="x" className="text-xs" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-16 h-22 rounded border-2 border-dashed border-gray-200 dark:border-border-base flex items-center justify-center shrink-0 text-slate-400">
+                    <PhosphorIcon name="image" className="text-2xl" />
+                  </div>
+                )}
+                <div className="flex-1 space-y-2">
+                  <input
+                    type="text"
+                    name="cover_image_url"
+                    value={coverUrl}
+                    onChange={(e) => setCoverUrl(e.target.value)}
+                    placeholder="ใส่ URL รูปภาพ หรือกดอัปโหลดด้านล่าง..."
+                    className="w-full pl-3 pr-3 py-2.5 text-sm bg-white dark:bg-card-bg border border-gray-200 dark:border-border-base rounded-md outline-none transition focus:border-meb-green focus:ring-2 focus:ring-meb-light text-forest dark:text-slate-100"
+                  />
+                  <div className="flex items-center gap-2">
+                    <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-meb-green bg-meb-light hover:bg-meb-light/80 rounded transition">
+                      {uploading ? (
+                        <PhosphorIcon name="circle-notch" className="animate-spin" />
+                      ) : (
+                        <PhosphorIcon name="upload-simple" weight="bold" />
+                      )}
+                      {uploading ? "กำลังอัปโหลด..." : "อัปโหลดภาพปก"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleUpload}
+                        disabled={uploading}
+                        className="hidden"
+                      />
+                    </label>
+                    <span className="text-[10px] text-slate-500">
+                      รองรับ JPG, PNG, WEBP (สูงสุด 5MB)
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* จำนวนเล่มตั้งต้น */}

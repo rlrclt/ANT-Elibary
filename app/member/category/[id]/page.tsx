@@ -51,6 +51,7 @@ export async function generateMetadata({
  * หน้ารายละเอียดหมวดหมู่ — แสดงหนังสือทั้งหมดในหมวด
  * - ดึงหมวดตาม id (ถ้าไม่มี → notFound)
  * - ดึงหนังสือ active ในหมวดนั้น เรียงตาม title ASC
+ * - ดึง rating + favorite status (เหมือนหน้า member หลัก)
  * - แสดง breadcrumbs + ปุ่มย้อนกลับ + กริดหนังสือ
  */
 export default async function CategoryDetailPage({
@@ -83,17 +84,69 @@ export default async function CategoryDetailPage({
   const bookList: BookRow[] = books ?? [];
   const color = category.color_code ?? "#60a5fa";
 
-  // แปลงข้อมูลหนังสือ → MemberBook
-  const memberBooks: MemberBook[] = bookList.map((b) => ({
-    id: b.id,
-    title: b.title,
-    author: b.author ?? "ไม่ระบุผู้แต่ง",
-    coverUrl: b.cover_image_url || fallbackCover(b.title),
-    price: 0,
-    rating: 0,
-    reviewCount: 0,
-    isFree: true,
-  }));
+  // ดึง user id (ถ้า login แล้ว) เพื่อเช็ครายการโปรด
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // ดึง rating เฉลี่ยของหนังสือทั้งหมด (group by book_id)
+  const bookIds = bookList.map((b) => b.id);
+  let ratingMap = new Map<string, { avg: number; count: number }>();
+  if (bookIds.length > 0) {
+    try {
+      const { data: ratings, error: ratingErr } = await supabase
+        .from("book_ratings")
+        .select("book_id, rating")
+        .in("book_id", bookIds);
+      if (!ratingErr && ratings) {
+        for (const r of ratings) {
+          const row = r as { book_id: string; rating: number };
+          const existing = ratingMap.get(row.book_id) ?? { avg: 0, count: 0 };
+          existing.avg =
+            (existing.avg * existing.count + row.rating) /
+            (existing.count + 1);
+          existing.count += 1;
+          ratingMap.set(row.book_id, existing);
+        }
+      }
+    } catch {
+      // table ไม่มี → ข้ามไป
+    }
+  }
+
+  // ดึงรายการโปรดของ user (ถ้า login)
+  let favSet = new Set<string>();
+  if (user) {
+    try {
+      const { data: favs, error: favErr } = await supabase
+        .from("book_favorites")
+        .select("book_id")
+        .eq("user_id", user.id);
+      if (!favErr && favs) {
+        for (const f of favs) {
+          favSet.add((f as any).book_id);
+        }
+      }
+    } catch {
+      // table ไม่มี → ข้ามไป
+    }
+  }
+
+  // แปลงข้อมูลหนังสือ → MemberBook (พร้อม rating + favorite)
+  const memberBooks: MemberBook[] = bookList.map((b) => {
+    const rating = ratingMap.get(b.id);
+    return {
+      id: b.id,
+      title: b.title,
+      author: b.author ?? "ไม่ระบุผู้แต่ง",
+      coverUrl: b.cover_image_url || fallbackCover(b.title),
+      price: 0,
+      rating: rating?.avg ?? 0,
+      reviewCount: rating?.count ?? 0,
+      isFree: true,
+      isFavorited: favSet.has(b.id),
+    };
+  });
 
   return (
     <div className="space-y-6">
@@ -112,14 +165,7 @@ export default async function CategoryDetailPage({
         </span>
       </nav>
 
-      {/* ปุ่มย้อนกลับ */}
-      <Link
-        href="/member/categories"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-meb-green hover:underline"
-      >
-        <PhosphorIcon name="arrow-left" weight="bold" className="text-base" />
-        ย้อนกลับ
-      </Link>
+      
 
       {/* หัวหมวดหมู่ — badge สี + ชื่อ + จำนวนเล่ม */}
       <div className="flex items-center gap-3">

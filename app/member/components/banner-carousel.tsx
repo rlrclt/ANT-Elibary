@@ -2,6 +2,7 @@
 
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Pagination, Navigation } from "swiper/modules";
+import { PhosphorIcon } from "@/app/components/phosphor-icon";
 // นำเข้า CSS ของ Swiper
 import "swiper/css";
 import "swiper/css/pagination";
@@ -14,6 +15,10 @@ export type BannerSlide = {
   subtitle: string;
   /** URL รูปภาพพื้นหลังของสไลด์ — ถ้าไม่ส่งจะ generate จาก prompt อัตโนมัติ */
   imageUrl?: string;
+  /** URL ที่จะพาไปเมื่อคลิก (ไม่บังคับ) */
+  actionUrl?: string;
+  /** ข้อความปุ่ม (ไม่บังคับ) */
+  actionLabel?: string;
 };
 
 type BannerCarouselProps = {
@@ -112,6 +117,18 @@ export function BannerCarousel({ slides = DEFAULT_SLIDES }: BannerCarouselProps)
                   <p className="text-xs md:text-sm text-white/90 max-w-lg drop-shadow">
                     {slide.subtitle}
                   </p>
+                  {/* action button (ถ้ามี) */}
+                  {slide.actionUrl && (
+                    <a
+                      href={slide.actionUrl.startsWith("http") ? slide.actionUrl : slide.actionUrl}
+                      target={slide.actionUrl.startsWith("http") ? "_blank" : undefined}
+                      rel={slide.actionUrl.startsWith("http") ? "noopener noreferrer" : undefined}
+                      className="inline-flex items-center gap-1.5 mt-4 bg-[#f06b23] hover:bg-[#d45f1f] text-white font-bold px-4 py-2 rounded-md text-xs sm:text-sm transition w-fit"
+                    >
+                      {slide.actionLabel || "ดูเพิ่มเติม"}
+                      <PhosphorIcon name="arrow-right" weight="bold" className="text-xs" />
+                    </a>
+                  )}
                 </div>
               </div>
             </SwiperSlide>

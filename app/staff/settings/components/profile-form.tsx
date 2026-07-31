@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { PhosphorIcon } from "../../../components/phosphor-icon";
 import { TextField, SubmitButton } from "../../../components/form-controls";
 import { updateStaffProfileAction } from "../actions";
+import { AvatarUploader } from "@/app/shared/components/avatar-uploader";
 import type { StaffProfile } from "./settings-client";
 
 type ProfileFormProps = {
@@ -70,6 +71,14 @@ export function ProfileForm({ initialProfile }: ProfileFormProps) {
           </div>
         )}
 
+        {/* รูปโปรไฟล์ — อัปโหลดได้ทันที */}
+        <div className="flex justify-center py-2">
+          <AvatarUploader
+            initialAvatarUrl={initialProfile.avatar_url}
+            fullName={initialProfile.full_name}
+          />
+        </div>
+
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
           <InfoRow label="ชื่อ-สกุล" value={initialProfile.full_name} icon="user" />
           <InfoRow label="รหัสเจ้าหน้าที่" value={initialProfile.user_id_code} icon="identification-card" />
@@ -90,17 +99,6 @@ export function ProfileForm({ initialProfile }: ProfileFormProps) {
           </p>
           <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap bg-gray-50 dark:bg-black/20 rounded-md px-3 py-2.5 min-h-[40px]">
             {initialProfile.address || "—"}
-          </p>
-        </div>
-
-        {/* Avatar URL */}
-        <div className="pt-2">
-          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1.5">
-            <PhosphorIcon name="image" className="text-slate-400" />
-            URL รูปประจำตัว
-          </p>
-          <p className="text-sm text-slate-700 dark:text-slate-300 truncate bg-gray-50 dark:bg-black/20 rounded-md px-3 py-2.5">
-            {initialProfile.avatar_url || "—"}
           </p>
         </div>
       </section>
@@ -211,15 +209,6 @@ export function ProfileForm({ initialProfile }: ProfileFormProps) {
             className="w-full px-3 py-2.5 text-sm bg-white dark:bg-card-bg border border-gray-200 dark:border-border-base rounded-md outline-none focus:border-meb-green focus:ring-2 focus:ring-meb-light text-forest dark:text-slate-100 resize-none transition"
           />
         </div>
-
-        <TextField
-          label="URL รูปประจำตัว (Avatar URL)"
-          name="avatar_url"
-          type="text"
-          placeholder="https://..."
-          icon="image"
-          defaultValue={initialProfile.avatar_url}
-        />
 
         {/* ฟิลด์สิทธิ์ (อ่านอย่างเดียว) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 pt-2 border-t border-gray-100 dark:border-border-base/50">

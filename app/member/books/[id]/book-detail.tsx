@@ -94,13 +94,13 @@ export function BookDetail({
       </nav>
 
       {/* ============ Main grid ============ */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-6">
         {/* ---------- LEFT: ปก + ปุ่ม ---------- */}
-        <div className="md:col-span-4 space-y-4">
+        <div className="sm:col-span-2 md:col-span-4 space-y-4">
           {/* ปกหนังสือ */}
-          <div className="bg-white dark:bg-card-bg rounded-xl shadow-sm border border-gray-100 dark:border-border-base p-5">
+          <div className="bg-white dark:bg-card-bg rounded-xl shadow-sm border border-gray-100 dark:border-border-base p-4 sm:p-5">
             <div
-              className="relative w-full rounded-lg overflow-hidden shadow-md bg-gray-100 dark:bg-card-bg"
+              className="relative w-full max-w-[220px] mx-auto rounded-lg overflow-hidden shadow-md bg-gray-100 dark:bg-card-bg"
               style={{ aspectRatio: "2 / 3" }}
             >
               {book.cover_image_url ? (
@@ -112,13 +112,13 @@ export function BookDetail({
                 />
               ) : (
                 // Placeholder ถ้าไม่มีรูปปก
-                <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-meb-light to-gray-100 dark:from-card-bg dark:to-page-bg">
+                <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-meb-light to-gray-100 dark:from-card-bg dark:to-page-bg p-3">
                   <PhosphorIcon
                     name="book"
                     weight="duotone"
-                    className="text-5xl text-meb-green/60"
+                    className="text-3xl text-meb-green/60"
                   />
-                  <span className="text-xs text-slate-400 px-4 text-center line-clamp-2">
+                  <span className="text-[11px] text-slate-400 text-center line-clamp-2">
                     {book.title}
                   </span>
                 </div>
@@ -153,31 +153,12 @@ export function BookDetail({
               initialFavorited={isFavorited}
               size="lg"
             />
-
-            {/* ตัวบ่งชี้ความพร้อม */}
-            <div className="flex items-center gap-2 pt-1 text-sm">
-              {isAvailable ? (
-                <>
-                  <span className="w-2.5 h-2.5 rounded-full bg-meb-green" />
-                  <span className="text-slate-700 dark:text-slate-200">
-                    พร้อมยืม {book.available_copies} เล่ม
-                  </span>
-                </>
-              ) : (
-                <>
-                  <span className="w-2.5 h-2.5 rounded-full bg-price-red" />
-                  <span className="text-slate-700 dark:text-slate-200">
-                    ไม่พร้อมยืม
-                  </span>
-                </>
-              )}
-            </div>
           </div>
         </div>
 
         {/* ---------- RIGHT: รายละเอียด ---------- */}
-        <div className="md:col-span-8 space-y-6">
-          <div className="bg-white dark:bg-card-bg rounded-xl shadow-sm border border-gray-100 dark:border-border-base p-5 md:p-6 space-y-4">
+        <div className="sm:col-span-2 md:col-span-8 space-y-6">
+          <div className="bg-white dark:bg-card-bg rounded-xl shadow-sm border border-gray-100 dark:border-border-base p-4 sm:p-5 md:p-6 space-y-4">
             {/* ป้ายหมวดหมู่ */}
             {book.book_categories && (
               <span
@@ -189,7 +170,7 @@ export function BookDetail({
             )}
 
             {/* ชื่อหนังสือ */}
-            <h1 className="text-2xl md:text-3xl font-bold text-forest dark:text-slate-100 leading-tight">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-forest dark:text-slate-100 leading-tight">
               {book.title}
             </h1>
 
@@ -209,7 +190,7 @@ export function BookDetail({
             <Divider />
 
             {/* สถิติสำเนา */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
               <StatCard
                 label="พร้อมยืม"
                 value={copiesCount.available}
@@ -288,7 +269,7 @@ export function BookDetail({
           </div>
 
           {/* ============ หนังสือที่เกี่ยวข้อง ============ */}
-          <div className="bg-white dark:bg-card-bg rounded-xl shadow-sm border border-gray-100 dark:border-border-base p-5 md:p-6">
+          <div className="bg-white dark:bg-card-bg rounded-xl shadow-sm border border-gray-100 dark:border-border-base p-4 sm:p-5 md:p-6">
             <h2 className="font-bold text-forest dark:text-slate-100 mb-4">
               หนังสือที่เกี่ยวข้อง
             </h2>

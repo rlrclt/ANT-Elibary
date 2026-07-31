@@ -18,7 +18,7 @@ export const metadata: Metadata = {
  * - ตรวจ session (getUser)
  * - ถ้า !user → redirect("/login")
  * - ดึง profile จาก public.users (full_name, user_id_code, avatar_url, role)
- * - ถ้า role เป็น staff/admin → redirect("/staff")
+ * - อนุญาตให้ staff/admin เข้าใช้งานส่วน member ได้ (แต่ member เข้า /staff ไม่ได้)
  * - เรนเดอร์ Header + SecondaryNav + main + Footer
  */
 export default async function MemberLayout({
@@ -38,11 +38,6 @@ export default async function MemberLayout({
     .select("full_name, user_id_code, avatar_url, role")
     .eq("id", user.id)
     .maybeSingle();
-
-  // ถ้า role เป็น staff/admin → ส่งไป /staff
-  if (profile && (profile.role === "staff" || profile.role === "admin")) {
-    redirect("/staff");
-  }
 
   // fallback ถ้าไม่มี profile
   const fullName = profile?.full_name ?? "สมาชิก";

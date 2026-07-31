@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { dispatchLineNotifications } from "@/utils/line-notify";
+import {
+  dispatchLineNotifications,
+  checkDueDateReminders,
+} from "@/utils/line-notify";
 
 /**
  * GET /api/line/dispatch
- * ส่ง LINE notification ที่ค้างอยู่ (line_sent_at IS NULL)
+ * ส่ง LINE notification ที่ค้างอยู่ใน notification_queue (status='pending')
+ * + ตรวจหนังสือใกล้ครบกำหนดคืนและ enqueue reminder
  *
  * ใช้สำหรับ Vercel Cron (เรียกทุก 1 นาที ผ่าน vercel.json crons config)
  * หรือ external cron service ที่ส่ง Authorization: Bearer <CRON_SECRET>
@@ -12,6 +16,14 @@ import { dispatchLineNotifications } from "@/utils/line-notify";
  *   - Vercel Cron ส่ง request ภายใน Vercel เอง (ไม่ต้อง secret)
  *   - External request ต้องส่ง CRON_SECRET ใน Authorization header
  *   - ถ้าไม่ตั้ง CRON_SECRET → อนุญาตทุกคน (development mode)
+ *
+ * flow:
+ *   1. Server Action บันทึก queue (pending) + after() ส่ง LINE ทันที
+ *   2. ถ้า after() ส่งสำเร็จ → status='sent' (ไม่ต้องรอ cron)
+ *   3. ถ้า after() ส่งไม่สำเร็จ → คง pending ให้ cron ดึงมา retry
+ *   4. cron เรียก endpoint นี้:
+ *      a. checkDueDateReminders() — ตรวจ due_date ใกล้ครบ → enqueue reminder
+ *      b. dispatchLineNotifications() — ดึง pending มาส่งใหม่
  */
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
@@ -29,11 +41,22 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    // 1. ตรวจหนังสือใกล้ครบกำหนด → enqueue reminder (best-effort)
+    let reminders = { enqueued: 0 };
+    try {
+      reminders = await checkDueDateReminders();
+    } catch (err) {
+      console.error("[line-dispatch] reminder check error:", err);
+    }
+
+    // 2. ส่ง LINE notification ที่ค้างอยู่ (รวม reminder ที่เพิ่ง enqueue)
     const result = await dispatchLineNotifications();
+
     return NextResponse.json({
       ok: true,
       sent: result.sent,
       failed: result.failed,
+      remindersEnqueued: reminders.enqueued,
     });
   } catch (err: any) {
     console.error("[line-dispatch] error:", err);

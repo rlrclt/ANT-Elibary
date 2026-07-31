@@ -1,15 +1,12 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState } from "react";
 import { PhosphorIcon } from "@/app/components/phosphor-icon";
 import { ProfileForm } from "./profile-form";
 import { ChangePasswordForm } from "./change-password-form";
 import { ChangeEmailForm } from "./change-email-form";
 import { ForgotPasswordModal } from "./forgot-password-modal";
-import {
-  getLineLinkStatusAction,
-  unlinkLineAccountAction,
-} from "@/app/line/actions";
+import { LineLinkSection } from "@/app/shared/components/line-link-section";
 
 export type Profile = {
   id: string;
@@ -63,106 +60,6 @@ const SECURITY_OPTIONS: {
     icon: "envelope-simple",
   },
 ];
-
-/**
- * LineLinkSection — ส่วนเชื่อมต่อ LINE ในแท็บการแจ้งเตือน
- */
-function LineLinkSection() {
-  const [linked, setLinked] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    startTransition(async () => {
-      const res = await getLineLinkStatusAction();
-      setLinked(res.linked);
-      setLoading(false);
-    });
-  }, []);
-
-  function handleUnlink() {
-    if (!confirm("ต้องการยกเลิกเชื่อมต่อ LINE ใช่หรือไม่?")) return;
-    setError(null);
-    startTransition(async () => {
-      const res = await unlinkLineAccountAction();
-      if (res.error) {
-        setError(res.error);
-        return;
-      }
-      setLinked(false);
-    });
-  }
-
-  const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
-  const liffReady =
-    liffId && liffId !== "1234567890-AbCdEfGh";
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-8 text-slate-400">
-        <PhosphorIcon name="circle-notch" className="text-xl animate-spin mr-2" />
-        <span className="text-sm">กำลังตรวจสอบ...</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-white dark:bg-card-bg rounded-xl border border-gray-100 dark:border-border-base p-5 transition-colors shadow-sm">
-      <div className="flex items-start gap-4">
-        <div className="w-12 h-12 rounded-xl bg-[#06C755]/10 flex items-center justify-center text-[#06C755] text-2xl shrink-0">
-          <PhosphorIcon name="line-logo" weight="fill" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <h3 className="text-sm font-bold text-forest dark:text-slate-100">
-            การแจ้งเตือนผ่าน LINE
-          </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-            เชื่อมต่อบัญชี LINE เพื่อรับการแจ้งเตือนการยืม-คืนหนังสือ
-            การเข้าใช้ห้องสมุด และประกาศจากระบบ ผ่านแอป LINE ของคุณ
-          </p>
-
-          {error && (
-            <p className="text-xs text-price-red mt-2">{error}</p>
-          )}
-
-          <div className="mt-4">
-            {linked ? (
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-meb-green bg-meb-light px-3 py-1.5 rounded-full">
-                  <PhosphorIcon name="check-circle" weight="fill" className="text-sm" />
-                  เชื่อมต่อแล้ว
-                </span>
-                <button
-                  onClick={handleUnlink}
-                  disabled={pending}
-                  className="text-xs font-medium text-slate-500 hover:text-price-red dark:text-slate-400 transition disabled:opacity-60"
-                >
-                  ยกเลิกเชื่อมต่อ
-                </button>
-              </div>
-            ) : liffReady ? (
-              <a
-                href={`https://liff.line.me/${liffId}`}
-                className="inline-flex items-center gap-2 bg-[#06C755] hover:bg-[#05b24d] text-white font-bold px-5 py-2.5 rounded-md text-sm transition"
-              >
-                <PhosphorIcon name="line-logo" weight="fill" />
-                เชื่อมต่อ LINE
-              </a>
-            ) : (
-              <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-lg p-3">
-                <p className="text-xs text-amber-700 dark:text-amber-400">
-                  ระบบยังไม่ได้เปิดใช้งาน LINE integration
-                  (ติดต่อเจ้าหน้าที่)
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 /**
  * ProfileClient — คอมโพเนนต์หลักสำหรับหน้าโปรไลล์

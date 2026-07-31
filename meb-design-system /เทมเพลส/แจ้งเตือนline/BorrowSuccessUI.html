@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ยืมหนังสือสำเร็จ - ANT-Elibary</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Kanit', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#09254c', // Dark blue from logo
+                        secondary: '#2e96a8', // Teal from success text
+                        accent: '#e0f2f1', // Light teal background
+                        textDark: '#1e293b',
+                        textLight: '#64748b',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #f8fafc;
+            /* Subdued background pattern */
+            background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+        }
+        /* Custom dotted border for list items */
+        .dotted-border-b {
+            border-bottom: 2px dotted #e2e8f0;
+        }
+        .dotted-border-b:last-child {
+            border-bottom: none;
+        }
+        
+        /* Floating animation for decorative elements */
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        .floating {
+            animation: float 4s ease-in-out infinite;
+        }
+        .floating-delayed {
+            animation: float 5s ease-in-out infinite 2s;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 sm:p-8 font-sans text-textDark">
+
+    <main class="w-full max-w-2xl relative">
+        <!-- Decorative elements mimicking the background -->
+        <div class="absolute -top-12 -left-12 text-blue-200 opacity-50 text-4xl floating">
+            <i class="ph-fill ph-dots-nine"></i>
+        </div>
+        <div class="absolute top-1/4 -right-8 text-blue-300 opacity-30 text-5xl floating-delayed">
+            <i class="ph-fill ph-sparkle"></i>
+        </div>
+        
+        <div class="glass-card rounded-3xl overflow-hidden relative z-10 border border-white/50">
+            
+            <header class="pt-10 pb-6 px-6 sm:px-10 text-center relative bg-gradient-to-b from-blue-50/50 to-white">
+                <!-- Logo area -->
+                <div class="flex flex-col items-center justify-center mb-6">
+                    <div class="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100 relative mb-2">
+                        <!-- Abstract Logo matching the image -->
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <span class="text-4xl font-bold text-primary tracking-tighter">AT</span>
+                        </div>
+                        <div class="absolute -top-1 -right-1 text-secondary text-lg">
+                            <i class="ph-fill ph-circles-three-plus"></i>
+                        </div>
+                    </div>
+                    <h1 class="text-xl font-bold text-primary uppercase tracking-wide">ANT-Elibary</h1>
+                    <p class="text-xs text-textLight tracking-widest mt-1">DIGITAL LIBRARY</p>
+                    <!-- Book icon under logo -->
+                    <div class="mt-2 text-primary text-sm">
+                        <i class="ph ph-book-open"></i>
+                    </div>
+                </div>
+
+                <!-- Success Message -->
+                <div class="flex items-center justify-center gap-4 mb-2">
+                    <div class="relative">
+                        <div class="w-14 h-14 bg-primary text-white rounded-full flex items-center justify-center shadow-lg">
+                            <i class="ph-fill ph-bell-ringing text-2xl"></i>
+                        </div>
+                        <div class="absolute -bottom-1 -right-1 w-6 h-6 bg-secondary text-white rounded-full flex items-center justify-center border-2 border-white">
+                            <i class="ph-bold ph-check text-xs"></i>
+                        </div>
+                    </div>
+                    <div class="text-left">
+                        <h2 class="text-3xl sm:text-4xl font-bold text-primary mb-1">ยืมหนังสือ</h2>
+                        <h2 class="text-3xl sm:text-4xl font-bold text-secondary">สำเร็จ!</h2>
+                    </div>
+                </div>
+                <p class="text-textLight mt-4 text-sm sm:text-base">การยืมหนังสือของคุณดำเนินการเรียบร้อยแล้ว</p>
+                
+                <!-- Decorative Book Image Placeholder (Using CSS shapes as a placeholder for the 3D book) -->
+                <div class="hidden sm:block absolute top-8 right-8 text-primary opacity-10">
+                     <i class="ph-fill ph-book-bookmark text-8xl"></i>
+                </div>
+            </header>
+
+            <div class="px-4 sm:px-10 pb-8">
+                <div class="bg-white rounded-2xl p-4 sm:p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] border border-slate-100 relative">
+                    
+                    <!-- Dotted decoration inside card -->
+                    <div class="absolute top-4 -right-3 text-slate-200 text-3xl">
+                        <i class="ph-fill ph-dots-nine"></i>
+                    </div>
+
+                    <ul class="flex flex-col">
+                        <!-- Borrower Name -->
+                        <li class="flex flex-col sm:flex-row sm:items-center py-4 dotted-border-b gap-2 sm:gap-6">
+                            <div class="flex items-center gap-3 sm:w-1/3 text-textLight">
+                                <div class="w-10 h-10 rounded-full bg-slate-100 text-secondary flex items-center justify-center">
+                                    <i class="ph-fill ph-user text-xl"></i>
+                                </div>
+                                <span class="font-medium">ชื่อผู้ยืม</span>
+                            </div>
+                            <div class="sm:border-l-2 sm:border-slate-100 sm:pl-6 sm:w-2/3">
+                                <span class="font-semibold text-lg text-primary">นายลิขิต ใจดี</span>
+                            </div>
+                        </li>
+
+                        <!-- Book Name -->
+                        <li class="flex flex-col sm:flex-row sm:items-center py-4 dotted-border-b gap-2 sm:gap-6">
+                            <div class="flex items-center gap-3 sm:w-1/3 text-textLight">
+                                <div class="w-10 h-10 rounded-full bg-slate-100 text-secondary flex items-center justify-center">
+                                    <i class="ph-fill ph-book-open-text text-xl"></i>
+                                </div>
+                                <span class="font-medium">ชื่อหนังสือ</span>
+                            </div>
+                            <div class="sm:border-l-2 sm:border-slate-100 sm:pl-6 sm:w-2/3">
+                                <span class="font-semibold text-lg text-primary">หลักการออกแบบ UX/UI Design</span>
+                            </div>
+                        </li>
+
+                        <!-- Volume/Copy -->
+                        <li class="flex flex-col sm:flex-row sm:items-center py-4 dotted-border-b gap-2 sm:gap-6">
+                            <div class="flex items-center gap-3 sm:w-1/3 text-textLight">
+                                <div class="w-10 h-10 rounded-full bg-slate-100 text-secondary flex items-center justify-center">
+                                    <i class="ph-fill ph-bookmark-simple text-xl"></i>
+                                </div>
+                                <span class="font-medium">เล่มที่</span>
+                            </div>
+                            <div class="sm:border-l-2 sm:border-slate-100 sm:pl-6 sm:w-2/3">
+                                <span class="font-semibold text-lg text-primary">1</span>
+                            </div>
+                        </li>
+
+                        <!-- Borrow Date -->
+                        <li class="flex flex-col sm:flex-row sm:items-center py-4 dotted-border-b gap-2 sm:gap-6">
+                            <div class="flex items-center gap-3 sm:w-1/3 text-textLight">
+                                <div class="w-10 h-10 rounded-full bg-slate-100 text-secondary flex items-center justify-center">
+                                    <i class="ph-fill ph-calendar-blank text-xl"></i>
+                                </div>
+                                <span class="font-medium">วันที่ยืม</span>
+                            </div>
+                            <div class="sm:border-l-2 sm:border-slate-100 sm:pl-6 sm:w-2/3">
+                                <span class="font-semibold text-lg text-primary">25 พฤษภาคม 2567</span>
+                            </div>
+                        </li>
+
+                        <!-- Return Date -->
+                        <li class="flex flex-col sm:flex-row sm:items-center py-4 dotted-border-b gap-2 sm:gap-6">
+                            <div class="flex items-center gap-3 sm:w-1/3 text-textLight">
+                                <div class="w-10 h-10 rounded-full bg-slate-100 text-secondary flex items-center justify-center">
+                                    <i class="ph-fill ph-calendar-check text-xl"></i>
+                                </div>
+                                <span class="font-medium">กำหนดคืน</span>
+                            </div>
+                            <div class="sm:border-l-2 sm:border-slate-100 sm:pl-6 sm:w-2/3">
+                                <span class="font-semibold text-lg text-primary">8 มิถุนายน 2567</span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <footer class="bg-gradient-to-b from-white to-slate-50 pt-6 pb-4 relative border-t border-slate-100">
+                <!-- Floating heart icon -->
+                <div class="absolute -top-5 left-1/2 transform -translate-x-1/2 w-10 h-10 bg-secondary text-white rounded-full flex items-center justify-center shadow-md border-4 border-white">
+                    <i class="ph-fill ph-heart text-lg"></i>
+                </div>
+
+                <div class="text-center px-6">
+                    <h3 class="text-2xl font-bold text-primary mb-2 flex items-center justify-center gap-2">
+                        <i class="ph-fill ph-sparkle text-secondary text-sm"></i>
+                        ขอบคุณที่ใช้บริการ
+                        <i class="ph-fill ph-sparkle text-secondary text-sm"></i>
+                    </h3>
+                    <p class="text-sm text-textLight mb-6">
+                        ANT-Elibary ห้องสมุดดิจิทัล เพื่อการเรียนรู้ <span class="text-secondary font-medium underline decoration-secondary decoration-2 underline-offset-4">ไม่รู้จบ</span>
+                    </p>
+                </div>
+
+                <!-- Bottom Bar -->
+                <div class="bg-primary text-white/80 py-3 px-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm w-full">
+                    <div class="flex items-center gap-2">
+                        <i class="ph ph-globe"></i>
+                        <span>ANT-Elibary</span>
+                    </div>
+                    <div class="hidden sm:block w-px h-4 bg-white/30"></div>
+                    <div class="flex items-center gap-2">
+                        <i class="ph ph-book-open"></i>
+                        <span>Digital Library</span>
+                    </div>
+                    <div class="hidden sm:block w-px h-4 bg-white/30"></div>
+                    <div class="flex items-center gap-2">
+                        <i class="ph ph-chat-circle-dots"></i>
+                        <span>เรียนรู้ได้ทุกที่ ทุกเวลา</span>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </main>
+
+</body>
+</html>

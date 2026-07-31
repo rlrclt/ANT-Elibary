@@ -6,6 +6,7 @@ import { ProfileForm } from "./profile-form";
 import { ChangePasswordForm } from "./change-password-form";
 import { ChangeEmailForm } from "./change-email-form";
 import { ForgotPasswordModal } from "./forgot-password-modal";
+import { LineLinkSection } from "@/app/shared/components/line-link-section";
 
 export type StaffProfile = {
   id: string;
@@ -28,13 +29,14 @@ type SettingsClientProps = {
   userEmail: string | null;
 };
 
-type TabKey = "profile" | "security";
+type TabKey = "profile" | "notifications" | "security";
 
 /** ตัวเลือกย่อยในแท็บความปลอดภัย — เลือกทีละอย่างไม่ขึ้นพร้อมกัน */
 type SecurityOption = "password" | "email";
 
 const TABS: { key: TabKey; label: string; icon: string }[] = [
   { key: "profile", label: "ข้อมูลส่วนตัว", icon: "user-focus" },
+  { key: "notifications", label: "การแจ้งเตือน", icon: "bell-ringing" },
   { key: "security", label: "ความปลอดภัย", icon: "shield-check" },
 ];
 
@@ -141,6 +143,12 @@ export function SettingsClient({ initialProfile, userEmail }: SettingsClientProp
       {/* Tab content */}
       {activeTab === "profile" && (
         <ProfileForm initialProfile={initialProfile} />
+      )}
+
+      {activeTab === "notifications" && (
+        <div className="space-y-4">
+          <LineLinkSection />
+        </div>
       )}
 
       {activeTab === "security" && (

@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -148,15 +149,18 @@ export async function POST(req: NextRequest) {
     }
   });
 
-  // รอทุก task เสร็จ แต่ LINE ไม่สนใจ response body
-  await Promise.allSettled(tasks);
+  // LINE ต้องการให้ webhook ตอบกลับเร็วมาก ให้ทำงานต่อหลังส่ง response แล้ว
+  // เพื่อไม่ให้ LINE แสดง timeout ทั้งที่ event ถูกประมวลผลสำเร็จ
+  after(async () => {
+    await Promise.allSettled(tasks);
 
-  // ส่ง notification ที่ค้างอยู่ด้วย (best-effort)
-  try {
-    await dispatchLineNotifications();
-  } catch (err) {
-    console.error("[line-webhook] dispatch error:", err);
-  }
+    // ส่ง notification ที่ค้างอยู่ด้วย (best-effort)
+    try {
+      await dispatchLineNotifications();
+    } catch (err) {
+      console.error("[line-webhook] dispatch error:", err);
+    }
+  });
 
   return NextResponse.json({ ok: true });
 }

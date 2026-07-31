@@ -49,10 +49,12 @@ export function StaffSidebar({
     { href: "/staff", label: "แดชบอร์ด", icon: "squares-four" },
     { href: "/staff/books", label: "จัดการหนังสือ", icon: "books" },
     { href: "/staff/members", label: "จัดการสมาชิก", icon: "users" },
-    { href: "/staff/loans", label: "ยืม-คืน", icon: "arrow-clock" },
+    { href: "/staff/loans", label: "ยืม-คืน", icon: "squares-four" },
     { href: "/staff/access-logs", label: "การเข้าใช้ห้องสมุด", icon: "door-open" },
     { href: "/staff/announcements", label: "จัดการประกาศ", icon: "megaphone" },
-    { href: "/staff/categories", label: "หมวดหมู่", icon: "grid-four" },
+    { href: "/staff/fines", label: "ค่าปรับ + QR", icon: "currency-circle-dollar" },
+    { href: "/staff/banners", label: "จัดการ Banner", icon: "image" },
+    { href: "/staff/line-preview", label: "LINE Flex Message", icon: "megaphone" },
   ];
 
   const isActive = (href: string) =>
