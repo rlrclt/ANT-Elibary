@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ต่ออายุการยืมสำเร็จ - ANT-Elibary</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Kanit', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#09254c', // Dark blue
+                        secondary: '#2e96a8', // Teal
+                        renew: '#3b82f6', // Blue for renewal/update
+                        renewBg: '#eff6ff', // Light blue background
+                        textDark: '#1e293b',
+                        textLight: '#64748b',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #f8fafc; 
+            background-image: 
+                radial-gradient(#bfdbfe 1px, transparent 1px),
+                radial-gradient(#bfdbfe 1px, transparent 1px);
+            background-size: 40px 40px;
+            background-position: 0 0, 20px 20px;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 40px -10px rgba(59, 130, 246, 0.15); /* Subtle blue shadow */
+        }
+        /* Custom dotted border for list items */
+        .dotted-border-b {
+            border-bottom: 2px dotted #e2e8f0;
+        }
+        .dotted-border-b:last-child {
+            border-bottom: none;
+        }
+        
+        /* Floating animations */
+        @keyframes float {
+            0% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-10px) rotate(2deg); }
+            100% { transform: translateY(0px) rotate(0deg); }
+        }
+        @keyframes pop {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes spin-slow {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .floating {
+            animation: float 5s ease-in-out infinite;
+        }
+        .pop-in {
+            animation: pop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        .spin-once {
+            animation: spin-slow 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+        
+        /* Specific gradient for the header background */
+        .header-bg {
+            background: linear-gradient(135deg, rgba(255,255,255,1) 0%, rgba(219,234,254,0.5) 100%);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 sm:p-8 font-sans text-textDark">
+
+    <main class="w-full max-w-2xl relative">
+        
+        <!-- Top Left Decoration -->
+        <div class="absolute -top-10 -left-10 w-40 h-40 bg-blue-100/60 rounded-full blur-3xl -z-10"></div>
+        <div class="absolute -top-4 -left-4 text-blue-200 text-4xl floating hidden sm:block">
+            <i class="ph-fill ph-clock-clockwise"></i>
+        </div>
+        
+        <!-- Top Right Decoration -->
+        <div class="absolute -top-10 -right-10 w-40 h-40 bg-indigo-100/50 rounded-full blur-3xl -z-10"></div>
+        <div class="absolute top-10 right-4 text-blue-200 text-4xl floating hidden sm:block" style="animation-delay: 1s;">
+            <i class="ph-fill ph-sparkle"></i>
+        </div>
+
+        <div class="glass-card rounded-[2rem] overflow-hidden relative z-10 border border-white">
+            
+            <header class="pt-8 pb-6 px-6 sm:px-10 text-center relative header-bg">
+                
+                <!-- Logo Area -->
+                <div class="flex flex-col items-center justify-center mb-6 relative">
+                    <div class="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-md border border-slate-50 relative z-10 mb-2">
+                        <!-- Abstract Logo -->
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <span class="text-4xl font-bold text-primary tracking-tighter">AT</span>
+                        </div>
+                        <!-- Small decoration on logo -->
+                        <div class="absolute -top-1 -right-1 text-secondary text-lg">
+                            <i class="ph-fill ph-circles-three-plus"></i>
+                        </div>
+                        <!-- Book accent below AT -->
+                        <div class="absolute bottom-3 text-secondary text-xs">
+                             <i class="ph-fill ph-book-open"></i>
+                        </div>
+                    </div>
+                    <h1 class="text-xl font-bold text-primary uppercase tracking-wide">ANT-Elibary</h1>
+                    <p class="text-[10px] text-textLight tracking-[0.2em] mt-1 font-medium">DIGITAL LIBRARY</p>
+                    <div class="mt-1 text-primary text-xs">
+                        <i class="ph ph-book-open"></i>
+                    </div>
+                </div>
+
+                <!-- Success Message Area -->
+                <div class="flex flex-col md:flex-row items-center justify-center gap-6 mb-4 relative z-10">
+                    
+                    <!-- Main Icon (Left) -->
+                    <div class="relative pop-in flex-shrink-0 mb-4 md:mb-0">
+                        <div class="w-20 h-20 bg-renew text-white rounded-full flex items-center justify-center shadow-lg border-4 border-white spin-once">
+                            <i class="ph-bold ph-arrows-clockwise text-5xl"></i>
+                        </div>
+                        <!-- Check Badge -->
+                        <div class="absolute -bottom-1 -right-1 w-8 h-8 bg-success text-white rounded-full flex items-center justify-center border-2 border-white shadow-sm" style="background-color: #10b981;">
+                            <i class="ph-bold ph-check text-lg"></i>
+                        </div>
+                        <!-- Sparkles around icon -->
+                        <i class="ph-fill ph-sparkle absolute -top-3 -right-2 text-blue-400 text-lg floating"></i>
+                        <i class="ph-fill ph-sparkle absolute bottom-1 -left-4 text-blue-300 text-sm floating" style="animation-delay: 0.5s;"></i>
+                    </div>
+
+                    <!-- Title Text -->
+                    <div class="text-center md:text-left flex-grow">
+                        <h2 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-primary mb-1 tracking-tight">ต่ออายุการยืม</h2>
+                        <h2 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-renew tracking-tight">สำเร็จ!</h2>
+                    </div>
+                    
+                    <!-- Decorative Calendar (Right - Desktop only) -->
+                     <div class="hidden lg:block relative flex-shrink-0 w-24 h-24">
+                        <div class="absolute inset-0 bg-blue-50 rounded-xl border border-blue-100 shadow-sm opacity-60 flex items-center justify-center">
+                            <i class="ph-duotone ph-calendar-plus text-4xl text-blue-400"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 md:mt-2 relative z-10 px-4">
+                    <p class="text-textDark text-sm sm:text-base font-medium">
+                        ระบบได้ทำการขยายเวลาการยืมหนังสือของคุณเรียบร้อยแล้ว<br class="sm:hidden" />
+                        <span class="text-renew font-semibold">ขอให้สนุกกับการอ่านต่อครับ</span>
+                    </p>
+                </div>
+                
+            </header>
+
+            <div class="px-4 sm:px-8 pb-8 relative z-10">
+                <!-- Data Card -->
+                <div class="bg-white rounded-3xl p-5 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 relative">
+                    
+                    <ul class="flex flex-col">
+                        <!-- Borrower Name -->
+                        <li class="flex flex-row items-center py-4 dotted-border-b gap-4">
+                            <div class="flex items-center gap-3 w-1/3 sm:w-1/4 text-textLight">
+                                <div class="w-10 h-10 rounded-full bg-slate-50 text-secondary flex items-center justify-center flex-shrink-0">
+                                    <i class="ph-fill ph-user text-xl"></i>
+                                </div>
+                                <span class="font-medium hidden sm:inline">ชื่อสมาชิก</span>
+                                <span class="font-medium sm:hidden text-sm">สมาชิก</span>
+                            </div>
+                            <div class="border-l-2 border-slate-100 pl-4 sm:pl-6 w-2/3 sm:w-3/4">
+                                <span class="font-semibold text-base sm:text-lg text-primary">นายลิขิต ใจดี</span>
+                            </div>
+                        </li>
+
+                        <!-- Book Name -->
+                        <li class="flex flex-row items-center py-4 dotted-border-b gap-4">
+                            <div class="flex items-center gap-3 w-1/3 sm:w-1/4 text-textLight">
+                                <div class="w-10 h-10 rounded-full bg-slate-50 text-secondary flex items-center justify-center flex-shrink-0">
+                                    <i class="ph-fill ph-book-open-text text-xl"></i>
+                                </div>
+                                <span class="font-medium hidden sm:inline">ชื่อหนังสือ</span>
+                                <span class="font-medium sm:hidden text-sm">หนังสือ</span>
+                            </div>
+                            <div class="border-l-2 border-slate-100 pl-4 sm:pl-6 w-2/3 sm:w-3/4">
+                                <span class="font-semibold text-base sm:text-lg text-primary">หลักการออกแบบ UX/UI Design</span>
+                            </div>
+                        </li>
+
+                        <!-- Volume/Copy -->
+                        <li class="flex flex-row items-center py-4 dotted-border-b gap-4">
+                            <div class="flex items-center gap-3 w-1/3 sm:w-1/4 text-textLight">
+                                <div class="w-10 h-10 rounded-full bg-slate-50 text-secondary flex items-center justify-center flex-shrink-0">
+                                    <i class="ph-fill ph-bookmark-simple text-xl"></i>
+                                </div>
+                                <span class="font-medium hidden sm:inline">เล่มที่</span>
+                                <span class="font-medium sm:hidden text-sm">เล่มที่</span>
+                            </div>
+                            <div class="border-l-2 border-slate-100 pl-4 sm:pl-6 w-2/3 sm:w-3/4">
+                                <span class="font-semibold text-base sm:text-lg text-primary">1</span>
+                            </div>
+                        </li>
+
+                        <!-- Old Return Date -->
+                        <li class="flex flex-row items-center py-4 dotted-border-b gap-4">
+                            <div class="flex items-center gap-3 w-1/3 sm:w-1/4 text-slate-400">
+                                <div class="w-10 h-10 rounded-full bg-slate-50 text-slate-400 flex items-center justify-center flex-shrink-0">
+                                    <i class="ph-fill ph-calendar-x text-xl"></i>
+                                </div>
+                                <span class="font-medium hidden sm:inline">กำหนดเดิม</span>
+                                <span class="font-medium sm:hidden text-sm">คืนเดิม</span>
+                            </div>
+                            <div class="border-l-2 border-slate-100 pl-4 sm:pl-6 w-2/3 sm:w-3/4 flex items-center">
+                                <span class="font-semibold text-base sm:text-lg text-slate-400 line-through">8 มิถุนายน 2567</span>
+                            </div>
+                        </li>
+
+                        <!-- New Return Date -->
+                        <li class="flex flex-row items-center py-4 dotted-border-b gap-4">
+                            <div class="flex items-center gap-3 w-1/3 sm:w-1/4 text-renew">
+                                <div class="w-10 h-10 rounded-full bg-renewBg text-renew flex items-center justify-center flex-shrink-0 relative shadow-inner">
+                                    <i class="ph-fill ph-calendar-plus text-xl"></i>
+                                </div>
+                                <span class="font-bold hidden sm:inline text-renew">กำหนดใหม่</span>
+                                <span class="font-bold sm:hidden text-sm text-renew">คืนใหม่</span>
+                            </div>
+                            <div class="border-l-2 border-blue-200 pl-4 sm:pl-6 w-2/3 sm:w-3/4 flex flex-wrap items-center gap-2">
+                                <span class="font-bold text-lg sm:text-xl text-renew">15 มิถุนายน 2567</span>
+                            </div>
+                        </li>
+                    </ul>
+                    
+                    <!-- Alert/Info Box for Renewal Details -->
+                    <div class="mt-6 bg-renewBg border border-blue-100 rounded-2xl p-4 flex flex-col sm:flex-row items-center sm:items-stretch gap-4 shadow-sm relative overflow-hidden">
+                        
+                        <!-- Decorative background element inside the box -->
+                        <div class="absolute -right-4 -top-4 text-blue-100 opacity-50 transform rotate-12">
+                            <i class="ph-fill ph-clock-clockwise text-6xl"></i>
+                        </div>
+
+                        <!-- Left Side: Time Extended -->
+                        <div class="flex items-center gap-3 sm:pr-4 sm:border-r border-blue-200 relative z-10">
+                            <div class="w-10 h-10 rounded-full bg-renew text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                                <i class="ph-bold ph-plus text-xl"></i>
+                            </div>
+                            <div class="flex items-baseline gap-2 whitespace-nowrap">
+                                <span class="text-primary font-bold text-lg">เพิ่มเวลาอีก</span>
+                                <span class="text-renew font-bold text-3xl">7</span>
+                                <span class="text-primary font-bold text-lg">วัน</span>
+                            </div>
+                        </div>
+
+                        <!-- Right Side: Quota Info -->
+                        <div class="flex items-center justify-center sm:justify-start w-full relative z-10">
+                            <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full shadow-sm border border-blue-50">
+                                <i class="ph-fill ph-info text-blue-400"></i>
+                                <span class="text-sm text-textLight font-medium">คุณใช้สิทธิ์ต่ออายุไปแล้ว <span class="text-primary font-bold">1/2</span> ครั้ง</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <footer class="bg-gradient-to-b from-white to-slate-50 pt-8 pb-4 relative border-t border-slate-100">
+                
+                <!-- Floating Icon overlapping border -->
+                <div class="absolute -top-6 left-1/2 transform -translate-x-1/2 w-12 h-12 bg-secondary text-white rounded-full flex items-center justify-center shadow-lg border-4 border-white">
+                    <i class="ph-fill ph-book-open text-xl"></i>
+                    <i class="ph-fill ph-heart absolute top-2 right-2 text-[10px]"></i>
+                </div>
+
+                <!-- Footer Message -->
+                <div class="text-center px-6 relative">
+                    <h3 class="text-xl sm:text-2xl font-bold text-primary mb-2 flex items-center justify-center gap-2">
+                        ขอบคุณที่ใช้บริการ
+                        <i class="ph-fill ph-heart text-secondary text-lg"></i>
+                    </h3>
+                    <p class="text-sm text-textLight mb-8">
+                        ANT-Elibary ห้องสมุดดิจิทัล เพื่อการเรียนรู้ <span class="text-secondary font-medium underline decoration-secondary decoration-2 underline-offset-4">ไม่รู้จบ</span>
+                    </p>
+                    
+                    <!-- Decorative stars -->
+                    <div class="absolute top-0 right-10 text-renew opacity-40">
+                        <i class="ph-fill ph-sparkle text-xl"></i>
+                    </div>
+                </div>
+
+                <!-- Bottom Info Bar -->
+                <div class="bg-primary text-white/90 py-3 px-4 flex flex-wrap items-center justify-center gap-x-4 sm:gap-x-6 gap-y-2 text-xs sm:text-sm w-full font-light">
+                    <div class="flex items-center gap-1.5 hover:text-white transition-colors cursor-pointer">
+                        <i class="ph ph-globe text-base"></i>
+                        <span>ANT-Elibary</span>
+                    </div>
+                    <div class="w-px h-3 bg-white/30 hidden sm:block"></div>
+                    <div class="flex items-center gap-1.5 hover:text-white transition-colors cursor-pointer">
+                        <i class="ph ph-book-open text-base"></i>
+                        <span>Digital Library</span>
+                    </div>
+                    <div class="w-px h-3 bg-white/30 hidden sm:block"></div>
+                    <div class="flex items-center gap-1.5 hover:text-white transition-colors cursor-pointer">
+                        <i class="ph ph-chat-circle-dots text-base"></i>
+                        <span>เรียนรู้ได้ทุกที่ ทุกเวลา</span>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </main>
+
+</body>
+</html>

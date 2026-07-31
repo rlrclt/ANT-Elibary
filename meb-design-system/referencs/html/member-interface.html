@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Library | วิทยาลัยเทคนิคอำนาจเจริญ (Amnat Charoen Tech)</title>
+    <meta name="description" content="ระบบห้องสมุดดิจิทัล วิทยาลัยเทคนิคอำนาจเจริญ แหล่งรวมตำราเรียน คู่มือช่าง และหนังสือสายวิชาชีพ">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        sans: ['"Noto Sans Thai"', 'sans-serif'] 
+                    },
+                    colors: {
+                        meb: { 
+                            green: '#00a651', 
+                            hover: '#008c44', 
+                            light: '#e6f6ec',
+                            nav: '#009348'
+                        },
+                        price: { 
+                            red: '#e53935',
+                            ribbon: '#e11d48',
+                            shadow: '#9f1239'
+                        },
+                        page: {
+                            bg: '#f0f2f5' /* Standard MEB background */
+                        },
+                        text: {
+                            main: '#333333',
+                            sub: '#64748b', /* slate-500 */
+                            muted: '#94a3b8' /* slate-400 */
+                        }
+                    },
+                    aspectRatio: {
+                        'book': '1 / 1.4', /* Standard MEB book proportion */
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #f0f2f5;
+            color: #333333;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Hide scrollbar for horizontal nav */
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Custom Ribbon Shape (MEB Style Best Seller) */
+        .meb-ribbon {
+            clip-path: polygon(100% 0, 100% 100%, 50% 82%, 0 100%, 0 0);
+        }
+
+        /* Rank Badge Gradients */
+        .rank-gold { background: linear-gradient(135deg, #ffd700, #ffaa00); }
+        .rank-silver { background: linear-gradient(135deg, #e0e0e0, #9e9e9e); }
+        .rank-bronze { background: linear-gradient(135deg, #ffbca8, #d87a5d); }
+        .rank-black { background-color: #333333; }
+    </style>
+</head>
+<body>
+
+    <header class="sticky top-0 z-50 bg-meb-green w-full shadow-md">
+        <div class="max-w-[1200px] mx-auto h-[60px] px-4 flex items-center justify-between gap-4">
+            
+            <!-- Logo area: Amnat Charoen Tech -->
+            <a href="#" class="flex items-center gap-2 text-white hover:text-white/90 shrink-0 focus:outline-none focus:ring-2 focus:ring-white rounded">
+                <i class="ph-fill ph-buildings text-3xl"></i>
+                <div class="flex flex-col">
+                    <span class="text-base font-bold tracking-tight hidden sm:block leading-none mt-1">วิทยาลัยเทคนิคอำนาจเจริญ</span>
+                    <span class="text-[10px] tracking-wider uppercase hidden sm:block">E-Library</span>
+                </div>
+            </a>
+
+            <!-- Search Bar (Desktop) -->
+            <div class="hidden md:flex flex-1 max-w-xl relative mx-4">
+                <input type="text" placeholder="ค้นหาตำราเรียน, คู่มือช่าง, ผู้แต่ง, แผนกวิชา..." 
+                       class="w-full h-10 pl-4 pr-10 rounded-md text-sm text-text-main placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-meb-light border-none">
+                <button class="absolute right-0 top-0 h-full w-10 flex items-center justify-center text-gray-500 hover:text-meb-green bg-white rounded-r-md">
+                    <i class="ph-bold ph-magnifying-glass text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Right Actions (Cart / Profile) -->
+            <div class="flex items-center gap-4 shrink-0 text-white">
+                <button class="md:hidden flex items-center justify-center text-2xl hover:text-meb-light focus:outline-none">
+                    <i class="ph ph-magnifying-glass"></i>
+                </button>
+                <a href="#" class="relative flex items-center justify-center text-2xl hover:text-meb-light transition-colors focus:outline-none rounded">
+                    <i class="ph ph-books"></i>
+                    <!-- Badge (Price Red) -->
+                    <span class="absolute -top-1 -right-2 bg-price-red text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-meb-green leading-none shadow-sm">
+                        2
+                    </span>
+                </a>
+                <a href="#" class="flex items-center gap-2 hover:text-meb-light transition-colors ml-2 focus:outline-none rounded">
+                    <i class="ph ph-user-circle text-2xl"></i>
+                    <span class="text-sm font-medium hidden sm:block">เข้าระบบนักศึกษา</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <nav class="bg-white border-b border-gray-200 sticky top-[60px] z-40 shadow-sm">
+        <div class="max-w-[1200px] mx-auto px-4 flex items-center gap-6 overflow-x-auto whitespace-nowrap scrollbar-hide text-sm font-medium">
+            <a href="#" class="py-3 border-b-[3px] border-meb-green text-meb-green font-bold">หน้าแรก</a>
+            <a href="#" class="py-3 border-b-[3px] border-transparent text-gray-700 hover:text-meb-green transition-colors">ตำรามาใหม่</a>
+            <a href="#" class="py-3 border-b-[3px] border-transparent text-gray-700 hover:text-meb-green transition-colors">ยอดนิยม</a>
+            <a href="#" class="py-3 border-b-[3px] border-transparent text-gray-700 hover:text-meb-green transition-colors">ช่างอุตสาหกรรม</a>
+            <a href="#" class="py-3 border-b-[3px] border-transparent text-gray-700 hover:text-meb-green transition-colors">พาณิชยกรรม</a>
+            <a href="#" class="py-3 border-b-[3px] border-transparent text-gray-700 hover:text-meb-green transition-colors">อ่านฟรี</a>
+            <!-- Promotion Tag (Red) -->
+            <a href="#" class="py-3 border-b-[3px] border-transparent text-price-red hover:text-price-shadow font-bold ml-auto flex items-center gap-1">
+                <i class="ph-fill ph-tag"></i> โปรโมชันตำราเรียน
+            </a>
+        </div>
+    </nav>
+
+    <main class="max-w-[1200px] mx-auto px-4 py-6 space-y-6">
+
+        <!-- Banner Carousel -->
+        <div class="w-full aspect-[21/9] md:aspect-[21/6] bg-gray-200 rounded-xl overflow-hidden relative group cursor-pointer shadow-sm">
+            <!-- Academic specific banner placeholder -->
+            <div class="absolute inset-0 bg-gradient-to-r from-[#1E3F20] to-[#00a651] flex flex-col justify-center px-8 md:px-16 text-white">
+                <div class="inline-block bg-white/20 px-3 py-1 rounded-full text-xs font-bold mb-3 w-fit backdrop-blur-sm border border-white/30">
+                    <i class="ph-fill ph-sparkle text-yellow-300"></i> เปิดเทอมใหม่ 2569
+                </div>
+                <h1 class="text-2xl md:text-4xl font-bold mb-2">คลังปัญญาดิจิทัลเพื่ออนาคตสายอาชีพ</h1>
+                <p class="text-sm md:text-base text-white/90 max-w-lg">อ่านฟรีตำราเรียน คู่มือช่าง และหนังสือเฉพาะทาง กว่า 10,000 เล่ม สำหรับนักศึกษาวิทยาลัยเทคนิคอำนาจเจริญ</p>
+            </div>
+            
+            <!-- Carousel Controls (Hidden until hover) -->
+            <button class="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/90 rounded-full flex items-center justify-center text-gray-800 shadow hover:bg-white opacity-0 group-hover:opacity-100 transition-opacity focus:outline-none">
+                <i class="ph-bold ph-caret-left"></i>
+            </button>
+            <button class="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/90 rounded-full flex items-center justify-center text-gray-800 shadow hover:bg-white opacity-0 group-hover:opacity-100 transition-opacity focus:outline-none">
+                <i class="ph-bold ph-caret-right"></i>
+            </button>
+            <!-- Pagination Dots -->
+            <div class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                <div class="w-2 h-2 rounded-full bg-white shadow-sm"></div>
+                <div class="w-2 h-2 rounded-full bg-white/50 shadow-sm hover:bg-white/80 cursor-pointer"></div>
+                <div class="w-2 h-2 rounded-full bg-white/50 shadow-sm hover:bg-white/80 cursor-pointer"></div>
+            </div>
+        </div>
+
+        <section class="bg-white rounded-xl shadow-sm p-4 md:p-6 border border-gray-100">
+            <div class="flex items-center justify-between mb-5">
+                <div class="flex items-center gap-2">
+                    <i class="ph-fill ph-trophy text-yellow-500 text-2xl"></i>
+                    <h2 class="text-xl md:text-2xl font-bold text-text-main">ตำรายอดนิยม หมวดวิชาชีพ</h2>
+                </div>
+                <a href="#" class="text-meb-green text-sm font-medium hover:underline flex items-center">
+                    ดูทั้งหมด <i class="ph ph-caret-right ml-0.5"></i>
+                </a>
+            </div>
+
+            <!-- Book Grid (2 cols mobile, 3 tablet, 5 desktop) -->
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-5">
+                
+                <!-- Rank 1 (Gold) -->
+                <article class="flex flex-col gap-2 group cursor-pointer relative">
+                    <div class="aspect-book relative rounded-[2px] shadow-sm border border-gray-200 overflow-visible mb-1">
+                        <!-- Rank Badge 1 -->
+                        <div class="absolute -top-3 -left-3 w-8 h-8 rounded-full rank-gold flex items-center justify-center text-white font-bold text-sm shadow-md z-10 border-2 border-white">1</div>
+                        <img src="https://placehold.co/400x560/1a365d/FFFFFF?text=วิศวกรรมไฟฟ้า" alt="พื้นฐานวิศวกรรมไฟฟ้า" class="w-full h-full object-cover rounded-[2px]">
+                    </div>
+                    <h3 class="text-sm font-bold text-text-main line-clamp-2 leading-snug group-hover:text-meb-green transition-colors">พื้นฐานวิศวกรรมไฟฟ้า ภาคปฏิบัติ</h3>
+                    <p class="text-xs text-text-sub truncate">อ.สมเกียรติ ไฟแรง</p>
+                    <div class="mt-auto pt-1 flex items-end justify-between">
+                        <div class="flex text-yellow-400 text-[11px] gap-[1px]">
+                           <i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star-half"></i>
+                        </div>
+                        <div class="text-meb-green font-bold text-sm leading-none">฿ 250</div>
+                    </div>
+                </article>
+
+                <!-- Rank 2 (Silver) -->
+                <article class="flex flex-col gap-2 group cursor-pointer relative">
+                    <div class="aspect-book relative rounded-[2px] shadow-sm border border-gray-200 overflow-visible mb-1">
+                        <!-- Rank Badge 2 -->
+                        <div class="absolute -top-3 -left-3 w-8 h-8 rounded-full rank-silver flex items-center justify-center text-white font-bold text-sm shadow-md z-10 border-2 border-white">2</div>
+                        <img src="https://placehold.co/400x560/4a5568/FFFFFF?text=เครื่องยนต์" alt="เครื่องยนต์สันดาปภายใน" class="w-full h-full object-cover rounded-[2px]">
+                    </div>
+                    <h3 class="text-sm font-bold text-text-main line-clamp-2 leading-snug group-hover:text-meb-green transition-colors">เครื่องยนต์สันดาปภายใน (ช่างยนต์)</h3>
+                    <p class="text-xs text-text-sub truncate">ผศ.ดร.วิชัย ยานยนต์</p>
+                    <div class="mt-auto pt-1 flex items-end justify-between">
+                        <div class="flex text-yellow-400 text-[11px] gap-[1px]">
+                           <i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i>
+                        </div>
+                        <div class="text-meb-green font-bold text-sm leading-none">฿ 320</div>
+                    </div>
+                </article>
+
+                <!-- Rank 3 (Bronze) -->
+                <article class="flex flex-col gap-2 group cursor-pointer relative">
+                    <div class="aspect-book relative rounded-[2px] shadow-sm border border-gray-200 overflow-visible mb-1">
+                        <!-- Rank Badge 3 -->
+                        <div class="absolute -top-3 -left-3 w-8 h-8 rounded-full rank-bronze flex items-center justify-center text-white font-bold text-sm shadow-md z-10 border-2 border-white">3</div>
+                        <img src="https://placehold.co/400x560/2d3748/FFFFFF?text=เขียนแบบ" alt="เขียนแบบเทคนิคเบื้องต้น" class="w-full h-full object-cover rounded-[2px]">
+                    </div>
+                    <h3 class="text-sm font-bold text-text-main line-clamp-2 leading-snug group-hover:text-meb-green transition-colors">เขียนแบบเทคนิคเบื้องต้น 2 มิติ</h3>
+                    <p class="text-xs text-text-sub truncate">แผนกวิชาช่างก่อสร้าง</p>
+                    <div class="mt-auto pt-1 flex items-end justify-between">
+                        <div class="flex text-yellow-400 text-[11px] gap-[1px]">
+                           <i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star text-slate-300"></i>
+                        </div>
+                        <div class="text-meb-green font-bold text-sm leading-none">฿ 180</div>
+                    </div>
+                </article>
+
+                <!-- Rank 4 (Black) -->
+                <article class="flex flex-col gap-2 group cursor-pointer relative hidden md:flex">
+                    <div class="aspect-book relative rounded-[2px] shadow-sm border border-gray-200 overflow-visible mb-1">
+                        <!-- Rank Badge 4 -->
+                        <div class="absolute -top-3 -left-3 w-8 h-8 rounded-full rank-black flex items-center justify-center text-white font-bold text-sm shadow-md z-10 border-2 border-white">4</div>
+                        <img src="https://placehold.co/400x560/2b6cb0/FFFFFF?text=การบัญชี" alt="การบัญชี" class="w-full h-full object-cover rounded-[2px]">
+                    </div>
+                    <h3 class="text-sm font-bold text-text-main line-clamp-2 leading-snug group-hover:text-meb-green transition-colors">การบัญชีสำหรับกิจการซื้อขายสินค้า</h3>
+                    <p class="text-xs text-text-sub truncate">อ.สมศรี ตัวเลข</p>
+                    <div class="mt-auto pt-1 flex items-end justify-between">
+                        <div class="flex text-yellow-400 text-[11px] gap-[1px]">
+                           <i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i>
+                        </div>
+                        <div class="text-meb-green font-bold text-sm leading-none">฿ 290</div>
+                    </div>
+                </article>
+
+                <!-- Rank 5 (Black) -->
+                <article class="flex flex-col gap-2 group cursor-pointer relative hidden lg:flex">
+                    <div class="aspect-book relative rounded-[2px] shadow-sm border border-gray-200 overflow-visible mb-1">
+                        <!-- Rank Badge 5 -->
+                        <div class="absolute -top-3 -left-3 w-8 h-8 rounded-full rank-black flex items-center justify-center text-white font-bold text-sm shadow-md z-10 border-2 border-white">5</div>
+                        <img src="https://placehold.co/400x560/1a202c/FFFFFF?text=Network" alt="เครือข่ายคอมพิวเตอร์" class="w-full h-full object-cover rounded-[2px]">
+                    </div>
+                    <h3 class="text-sm font-bold text-text-main line-clamp-2 leading-snug group-hover:text-meb-green transition-colors">เครือข่ายคอมพิวเตอร์และการสื่อสาร</h3>
+                    <p class="text-xs text-text-sub truncate">สาขาเทคโนโลยีสารสนเทศ</p>
+                    <div class="mt-auto pt-1 flex items-end justify-between">
+                        <div class="flex text-yellow-400 text-[11px] gap-[1px]">
+                           <i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star-half"></i>
+                        </div>
+                        <div class="text-meb-green font-bold text-sm leading-none">฿ 450</div>
+                    </div>
+                </article>
+
+            </div>
+        </section>
+
+        <section class="bg-white rounded-xl shadow-sm p-4 md:p-6 border border-gray-100">
+            <div class="flex items-center justify-between mb-5">
+                <div class="flex items-center gap-2">
+                    <!-- Green Accent Bar (Standard MEB style for normal sections) -->
+                    <div class="w-1.5 h-6 bg-meb-green rounded-full"></div>
+                    <h2 class="text-xl md:text-2xl font-bold text-text-main">มาใหม่ แนะนำ</h2>
+                </div>
+                <a href="#" class="text-meb-green text-sm font-medium hover:underline flex items-center">
+                    ดูทั้งหมด <i class="ph ph-caret-right ml-0.5"></i>
+                </a>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-5">
+                
+                <!-- Book with Discount -->
+                <article class="flex flex-col gap-2 group cursor-pointer relative">
+                    <div class="aspect-book relative rounded-[2px] shadow-sm border border-gray-200 overflow-hidden mb-1">
+                        <!-- % Discount Badge (Strictly Top-Left, Red) -->
+                        <div class="absolute top-0 left-0 bg-price-red text-white text-[10px] font-bold px-1.5 py-0.5 rounded-br-md z-10">-20%</div>
+                        <img src="https://placehold.co/400x560/2c7a7b/FFFFFF?text=ซ่อมมอไซค์" alt="ซ่อมจักรยานยนต์" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                    </div>
+                    <h3 class="text-sm font-bold text-text-main line-clamp-2 leading-snug group-hover:text-meb-green transition-colors">คู่มือซ่อมบำรุงรถจักรยานยนต์ 4 จังหวะ</h3>
+                    <p class="text-xs text-text-sub truncate">อ.ช่างยนต์ อาชีวะ</p>
+                    <div class="mt-auto pt-1 flex items-end justify-between">
+                        <div class="flex text-yellow-400 text-[11px] gap-[1px]">
+                           <!-- 5 empty stars if no rating -->
+                           <i class="ph-fill ph-star text-slate-300"></i><i class="ph-fill ph-star text-slate-300"></i><i class="ph-fill ph-star text-slate-300"></i><i class="ph-fill ph-star text-slate-300"></i><i class="ph-fill ph-star text-slate-300"></i>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] text-text-muted line-through block leading-none mb-0.5">฿ 200</span>
+                            <span class="text-price-red font-bold text-sm leading-none">฿ 160</span>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- Book with Discount -->
+                <article class="flex flex-col gap-2 group cursor-pointer relative">
+                    <div class="aspect-book relative rounded-[2px] shadow-sm border border-gray-200 overflow-hidden mb-1">
+                        <div class="absolute top-0 left-0 bg-price-red text-white text-[10px] font-bold px-1.5 py-0.5 rounded-br-md z-10">-15%</div>
+                        <img src="https://placehold.co/400x560/c53030/FFFFFF?text=Safety" alt="ความปลอดภัย" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                    </div>
+                    <h3 class="text-sm font-bold text-text-main line-clamp-2 leading-snug group-hover:text-meb-green transition-colors">ความปลอดภัยในงานก่อสร้าง (Safety First)</h3>
+                    <p class="text-xs text-text-sub truncate">สมาคมวิศวกรรมสถาน</p>
+                    <div class="mt-auto pt-1 flex items-end justify-between">
+                        <div class="flex text-yellow-400 text-[11px] gap-[1px]">
+                           <i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star text-slate-300"></i>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] text-text-muted line-through block leading-none mb-0.5">฿ 250</span>
+                            <span class="text-price-red font-bold text-sm leading-none">฿ 212</span>
+                        </div>
+                    </div>
+                </article>
+                
+                <!-- Normal Book (No Discount) -->
+                <article class="flex flex-col gap-2 group cursor-pointer relative">
+                    <div class="aspect-book relative rounded-[2px] shadow-sm border border-gray-200 overflow-hidden mb-1">
+                        <img src="https://placehold.co/400x560/2b6cb0/FFFFFF?text=English" alt="ภาษาอังกฤษสำหรับช่าง" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                    </div>
+                    <h3 class="text-sm font-bold text-text-main line-clamp-2 leading-snug group-hover:text-meb-green transition-colors">ภาษาอังกฤษสำหรับช่างเทคนิค (English for Technicians)</h3>
+                    <p class="text-xs text-text-sub truncate">หมวดวิชาภาษาต่างประเทศ</p>
+                    <div class="mt-auto pt-1 flex items-end justify-between">
+                        <div class="flex text-yellow-400 text-[11px] gap-[1px]">
+                           <i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i>
+                        </div>
+                        <div class="text-meb-green font-bold text-sm leading-none">฿ 150</div>
+                    </div>
+                </article>
+
+                <!-- Book with Discount -->
+                <article class="flex flex-col gap-2 group cursor-pointer relative hidden md:flex">
+                    <div class="aspect-book relative rounded-[2px] shadow-sm border border-gray-200 overflow-hidden mb-1">
+                        <div class="absolute top-0 left-0 bg-price-red text-white text-[10px] font-bold px-1.5 py-0.5 rounded-br-md z-10">-10%</div>
+                        <img src="https://placehold.co/400x560/2c5282/FFFFFF?text=Microcontroller" alt="Microcontroller" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                    </div>
+                    <h3 class="text-sm font-bold text-text-main line-clamp-2 leading-snug group-hover:text-meb-green transition-colors">การเขียนโปรแกรม Microcontroller พื้นฐาน</h3>
+                    <p class="text-xs text-text-sub truncate">แผนกอิเล็กทรอนิกส์</p>
+                    <div class="mt-auto pt-1 flex items-end justify-between">
+                        <div class="flex text-yellow-400 text-[11px] gap-[1px]">
+                           <i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star-half"></i>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] text-text-muted line-through block leading-none mb-0.5">฿ 300</span>
+                            <span class="text-price-red font-bold text-sm leading-none">฿ 270</span>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- Normal Book -->
+                <article class="flex flex-col gap-2 group cursor-pointer relative hidden lg:flex">
+                    <div class="aspect-book relative rounded-[2px] shadow-sm border border-gray-200 overflow-hidden mb-1">
+                        <img src="https://placehold.co/400x560/744210/FFFFFF?text=Math" alt="คณิตศาสตร์" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                    </div>
+                    <h3 class="text-sm font-bold text-text-main line-clamp-2 leading-snug group-hover:text-meb-green transition-colors">คณิตศาสตร์อุตสาหกรรม (Applied Math)</h3>
+                    <p class="text-xs text-text-sub truncate">อ.คำนวณ แม่นยำ</p>
+                    <div class="mt-auto pt-1 flex items-end justify-between">
+                        <div class="flex text-yellow-400 text-[11px] gap-[1px]">
+                           <i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star text-slate-300"></i><i class="ph-fill ph-star text-slate-300"></i>
+                        </div>
+                        <div class="text-meb-green font-bold text-sm leading-none">฿ 199</div>
+                    </div>
+                </article>
+
+            </div>
+        </section>
+
+        <section class="bg-white rounded-xl shadow-sm p-4 md:p-6 border border-gray-100">
+            <div class="flex items-center justify-between mb-5">
+                <div class="flex items-center gap-2">
+                    <i class="ph-fill ph-gift text-pink-500 text-2xl"></i>
+                    <h2 class="text-xl md:text-2xl font-bold text-text-main">ตำราเรียนอ่านฟรี (เฉพาะนักศึกษา)</h2>
+                </div>
+                <a href="#" class="text-meb-green text-sm font-medium hover:underline flex items-center">
+                    ดูทั้งหมด <i class="ph ph-caret-right ml-0.5"></i>
+                </a>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-5">
+                
+                <!-- Free Book with Ribbon -->
+                <article class="flex flex-col gap-2 group cursor-pointer relative">
+                    <div class="aspect-book relative rounded-[2px] shadow-sm border border-gray-200 overflow-hidden mb-1">
+                        <!-- Best Seller Ribbon (Strictly Top-Right, Shape meb-ribbon) -->
+                        <div class="absolute top-0 right-2 w-7 h-9 bg-price-ribbon z-10 shadow-md flex justify-center pt-1.5 meb-ribbon">
+                            <i class="ph-fill ph-fire text-white text-sm"></i>
+                        </div>
+                        <img src="https://placehold.co/400x560/1a202c/FFFFFF?text=Handbook" alt="คู่มือ" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                    </div>
+                    <h3 class="text-sm font-bold text-text-main line-clamp-2 leading-snug group-hover:text-meb-green transition-colors">คู่มือนักศึกษาวิทยาลัยเทคนิคอำนาจเจริญ ประจำปี 2569</h3>
+                    <p class="text-xs text-text-sub truncate">งานปกครองและกิจการนักศึกษา</p>
+                    <div class="mt-auto pt-1 flex items-end justify-between">
+                        <div class="flex text-yellow-400 text-[11px] gap-[1px]">
+                           <i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i>
+                        </div>
+                        <div class="text-meb-green font-bold text-sm leading-none">ฟรี</div>
+                    </div>
+                </article>
+
+                <!-- Standard Free Book -->
+                <article class="flex flex-col gap-2 group cursor-pointer relative">
+                    <div class="aspect-book relative rounded-[2px] shadow-sm border border-gray-200 overflow-hidden mb-1">
+                        <img src="https://placehold.co/400x560/975a16/FFFFFF?text=Welding" alt="ช่างเชื่อม" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                    </div>
+                    <h3 class="text-sm font-bold text-text-main line-clamp-2 leading-snug group-hover:text-meb-green transition-colors">มาตรฐานวิชาชีพช่างเชื่อมโลหะระดับ 1</h3>
+                    <p class="text-xs text-text-sub truncate">สถาบันพัฒนาฝีมือแรงงาน</p>
+                    <div class="mt-auto pt-1 flex items-end justify-between">
+                        <div class="flex text-yellow-400 text-[11px] gap-[1px]">
+                           <i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star-half"></i><i class="ph-fill ph-star text-slate-300"></i>
+                        </div>
+                        <div class="text-meb-green font-bold text-sm leading-none">ฟรี</div>
+                    </div>
+                </article>
+
+                <!-- Free Book with Ribbon -->
+                <article class="flex flex-col gap-2 group cursor-pointer relative">
+                    <div class="aspect-book relative rounded-[2px] shadow-sm border border-gray-200 overflow-hidden mb-1">
+                        <div class="absolute top-0 right-2 w-7 h-9 bg-price-ribbon z-10 shadow-md flex justify-center pt-1.5 meb-ribbon">
+                            <i class="ph-fill ph-fire text-white text-sm"></i>
+                        </div>
+                        <img src="https://placehold.co/400x560/2b6cb0/FFFFFF?text=Innovation" alt="นวัตกรรม" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                    </div>
+                    <h3 class="text-sm font-bold text-text-main line-clamp-2 leading-snug group-hover:text-meb-green transition-colors">แนวทางการทำโครงงานนวัตกรรมสิ่งประดิษฐ์คนรุ่นใหม่</h3>
+                    <p class="text-xs text-text-sub truncate">ศูนย์วิจัยและนวัตกรรม</p>
+                    <div class="mt-auto pt-1 flex items-end justify-between">
+                        <div class="flex text-yellow-400 text-[11px] gap-[1px]">
+                           <i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i>
+                        </div>
+                        <div class="text-meb-green font-bold text-sm leading-none">ฟรี</div>
+                    </div>
+                </article>
+
+                <!-- Standard Free Book -->
+                <article class="flex flex-col gap-2 group cursor-pointer relative hidden md:flex">
+                    <div class="aspect-book relative rounded-[2px] shadow-sm border border-gray-200 overflow-hidden mb-1">
+                        <img src="https://placehold.co/400x560/2c7a7b/FFFFFF?text=Electronics" alt="อิเล็กทรอนิกส์" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                    </div>
+                    <h3 class="text-sm font-bold text-text-main line-clamp-2 leading-snug group-hover:text-meb-green transition-colors">แบบฝึกหัดอิเล็กทรอนิกส์พื้นฐาน</h3>
+                    <p class="text-xs text-text-sub truncate">แผนกช่างอิเล็กทรอนิกส์</p>
+                    <div class="mt-auto pt-1 flex items-end justify-between">
+                        <div class="flex text-yellow-400 text-[11px] gap-[1px]">
+                           <i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star text-slate-300"></i><i class="ph-fill ph-star text-slate-300"></i>
+                        </div>
+                        <div class="text-meb-green font-bold text-sm leading-none">ฟรี</div>
+                    </div>
+                </article>
+
+                <!-- Standard Free Book -->
+                <article class="flex flex-col gap-2 group cursor-pointer relative hidden lg:flex">
+                    <div class="aspect-book relative rounded-[2px] shadow-sm border border-gray-200 overflow-hidden mb-1">
+                        <img src="https://placehold.co/400x560/4a5568/FFFFFF?text=Law" alt="กฎหมาย" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                    </div>
+                    <h3 class="text-sm font-bold text-text-main line-clamp-2 leading-snug group-hover:text-meb-green transition-colors">กฎหมายแรงงานเบื้องต้นสำหรับนักศึกษาอาชีวศึกษา</h3>
+                    <p class="text-xs text-text-sub truncate">กระทรวงแรงงาน</p>
+                    <div class="mt-auto pt-1 flex items-end justify-between">
+                        <div class="flex text-yellow-400 text-[11px] gap-[1px]">
+                           <i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i>
+                        </div>
+                        <div class="text-meb-green font-bold text-sm leading-none">ฟรี</div>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer (Full Version applied to Landing Page) -->
+    <footer class="bg-[#1f2937] text-white pt-12 pb-6 mt-12 border-t-[4px] border-meb-green">
+        <div class="max-w-[1200px] mx-auto px-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
+                
+                <!-- Col 1: About -->
+                <div>
+                    <h4 class="font-bold text-lg mb-4 text-meb-green">เกี่ยวกับ E-Library</h4>
+                    <p class="text-sm text-gray-300 leading-relaxed mb-4">
+                        ระบบห้องสมุดดิจิทัล วิทยาลัยเทคนิคอำนาจเจริญ ที่รวบรวมตำราเรียน คู่มือช่าง และเอกสารวิชาการ เพื่อสนับสนุนการเรียนการสอนสายอาชีพ ให้อ่านได้ทุกที่ทุกเวลาบนทุกอุปกรณ์
+                    </p>
+                    <a href="#" class="flex items-center gap-2 text-white hover:text-white/90">
+                        <i class="ph-fill ph-buildings text-2xl"></i>
+                        <div class="flex flex-col">
+                            <span class="font-bold leading-none mt-1">วท.อำนาจเจริญ</span>
+                            <span class="text-[10px] tracking-wider text-gray-400">E-LIBRARY</span>
+                        </div>
+                    </a>
+                </div>
+
+                <!-- Col 2: Support -->
+                <div>
+                    <h4 class="font-bold text-lg mb-4 border-b border-gray-700 pb-2 inline-block">บริการและช่วยเหลือ</h4>
+                    <ul class="space-y-3 text-sm text-gray-300">
+                        <li><a href="#" class="hover:text-meb-light transition-colors flex items-center gap-2"><i class="ph ph-caret-right"></i> วิธีการล็อกอินด้วยรหัสนักศึกษา</a></li>
+                        <li><a href="#" class="hover:text-meb-light transition-colors flex items-center gap-2"><i class="ph ph-caret-right"></i> วิธีการอ่าน E-Book ออฟไลน์</a></li>
+                        <li><a href="#" class="hover:text-meb-light transition-colors flex items-center gap-2"><i class="ph ph-caret-right"></i> กฎระเบียบการยืม-คืนหนังสือดิจิทัล</a></li>
+                        <li><a href="#" class="hover:text-meb-light transition-colors flex items-center gap-2"><i class="ph ph-caret-right"></i> ติดต่อศูนย์วิทยบริการและห้องสมุด</a></li>
+                    </ul>
+                </div>
+
+                <!-- Col 3: Popular Categories -->
+                <div>
+                    <h4 class="font-bold text-lg mb-4 border-b border-gray-700 pb-2 inline-block">หมวดหมู่แผนกวิชา</h4>
+                    <ul class="space-y-3 text-sm text-gray-300">
+                        <li><a href="#" class="hover:text-meb-light transition-colors flex items-center gap-2"><i class="ph ph-caret-right"></i> แผนกวิชาช่างยนต์</a></li>
+                        <li><a href="#" class="hover:text-meb-light transition-colors flex items-center gap-2"><i class="ph ph-caret-right"></i> แผนกวิชาช่างไฟฟ้ากำลัง</a></li>
+                        <li><a href="#" class="hover:text-meb-light transition-colors flex items-center gap-2"><i class="ph ph-caret-right"></i> แผนกวิชาช่างก่อสร้าง</a></li>
+                        <li><a href="#" class="hover:text-meb-light transition-colors flex items-center gap-2"><i class="ph ph-caret-right"></i> แผนกวิชาเทคโนโลยีสารสนเทศ</a></li>
+                        <li><a href="#" class="hover:text-meb-light transition-colors flex items-center gap-2"><i class="ph ph-caret-right"></i> แผนกวิชาการบัญชี</a></li>
+                    </ul>
+                </div>
+
+                <!-- Col 4: Apps & Social -->
+                <div>
+                    <h4 class="font-bold text-lg mb-4 border-b border-gray-700 pb-2 inline-block">ดาวน์โหลดแอปอ่านอีบุ๊ก</h4>
+                    <div class="flex flex-col gap-3">
+                        <a href="#" class="bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-md flex items-center gap-3 transition-colors border border-gray-700 w-fit">
+                            <i class="ph-fill ph-apple-logo text-2xl"></i>
+                            <div class="flex flex-col text-left">
+                                <span class="text-[10px] leading-none text-gray-400">Download on the</span>
+                                <span class="text-sm font-semibold leading-tight">App Store</span>
+                            </div>
+                        </a>
+                        <a href="#" class="bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-md flex items-center gap-3 transition-colors border border-gray-700 w-fit">
+                            <i class="ph-fill ph-google-play-logo text-2xl text-green-500"></i>
+                            <div class="flex flex-col text-left">
+                                <span class="text-[10px] leading-none text-gray-400">GET IT ON</span>
+                                <span class="text-sm font-semibold leading-tight">Google Play</span>
+                            </div>
+                        </a>
+                    </div>
+                    
+                    <div class="mt-6 flex gap-4">
+                        <a href="#" class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center hover:bg-meb-green transition-colors"><i class="ph-fill ph-facebook-logo text-lg"></i></a>
+                        <a href="#" class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center hover:bg-meb-green transition-colors"><i class="ph-fill ph-youtube-logo text-lg"></i></a>
+                        <a href="#" class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center hover:bg-meb-green transition-colors"><i class="ph-fill ph-globe text-lg"></i></a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Bottom Copyright -->
+            <div class="border-t border-gray-700 pt-6 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-gray-400">
+                <p>&copy; 2026 วิทยาลัยเทคนิคอำนาจเจริญ (Amnat Charoen Technical College). สงวนสิทธิ์ทุกประการ.</p>
+                <div class="flex gap-4">
+                    <a href="#" class="hover:text-white">เงื่อนไขการให้บริการห้องสมุด</a>
+                    <a href="#" class="hover:text-white">นโยบายความเป็นส่วนตัว (PDPA)</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

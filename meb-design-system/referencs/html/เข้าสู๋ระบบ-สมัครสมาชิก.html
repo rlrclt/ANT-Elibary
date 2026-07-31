@@ -1,0 +1,348 @@
+"use client";
+
+import React, { useState } from 'react';
+
+const Icons = {
+  Buildings: (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="currentColor" {...props}><path d="M240,208H224V96a16,16,0,0,0-16-16H144V32a16,16,0,0,0-16-16H32A16,16,0,0,0,16,32V208H8a8,8,0,0,0,0,16H248a8,8,0,0,0,0-16ZM88,144H64a8,8,0,0,1,0-16H88a8,8,0,0,1,0,16Zm0-48H64a8,8,0,0,1,0-16H88a8,8,0,0,1,0,16Zm0-48H64a8,8,0,0,1,0-16H88a8,8,0,0,1,0,16Zm96,96H160a8,8,0,0,1,0-16h24a8,8,0,0,1,0,16Zm0-48H160a8,8,0,0,1,0-16h24a8,8,0,0,1,0,16Z"></path></svg>
+  ),
+  User: (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="currentColor" {...props}><path d="M128,120a56,56,0,1,0-56-56A56.06,56.06,0,0,0,128,120Zm0-96a40,40,0,1,1-40,40A40,40,0,0,1,128,24Zm112,208H16a8,8,0,0,1-7.11-11.55C26.54,185.34,70.52,160,128,160s101.46,25.34,119.11,60.45A8,8,0,0,1,240,232Zm-206.67-16c14.73-24.81,49.25-40,94.67-40s80,15.19,94.67,40Z"></path></svg>
+  ),
+  Lock: (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="currentColor" {...props}><path d="M208,80H176V56a48,48,0,0,0-96,0V80H48A16,16,0,0,0,32,96V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V96A16,16,0,0,0,208,80ZM96,56a32,32,0,0,1,64,0V80H96ZM208,208H48V96H208V208Zm-68-56a12,12,0,1,1-12-12A12,12,0,0,1,140,152Z"></path></svg>
+  ),
+  Eye: (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="currentColor" {...props}><path d="M247.31,124.76c-.35-.79-8.82-19.58-27.65-38.41C194.57,62.26,162.88,48,128,48S61.43,62.26,36.34,86.35C17.51,105.18,9,124,8.69,124.76a8,8,0,0,0,0,6.48c.35.79,8.82,19.58,27.65,38.41C61.43,193.74,93.12,208,128,208s66.57-14.26,91.66-38.35c18.83-18.83,27.3-37.62,27.65-38.41A8,8,0,0,0,247.31,124.76ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.47,133.47,0,0,1,25,128,133.33,133.33,0,0,1,48.07,97.25C70.33,75.19,97.22,64,128,64s57.67,11.19,79.93,33.25A133.46,133.46,0,0,1,231.05,128C223.84,141.46,192.43,192,128,192Zm0-112a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Z"></path></svg>
+  ),
+  EyeSlash: (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="currentColor" {...props}><path d="M53.92,34.62A8,8,0,1,0,42.08,45.38l28.07,31.58A130.65,133.65,0,0,0,25,124.76a8,8,0,0,0,0,6.48C32.25,144.75,63.66,192,128,192a114.73,114.73,0,0,0,51.81-12.06l34.11,38.38a8,8,0,1,0,12-10.64ZM128,176c-54,0-85.73-40.42-93.58-50,6.86-8.38,28.66-31.52,60.6-43.19l18.4,20.71A32,32,0,0,0,147,140.23l19.5,21.94A101.44,101.44,0,0,1,128,176Zm59-71.18a8,8,0,0,0-10.6-10.66A32,32,0,0,0,137,76.54a8,8,0,0,0-10.6-10.66l-20.7-23.3A125.75,125.75,0,0,1,128,40c64,0,95.75,40.42,103.58,50-3.32,4-10,11.51-20.51,21.05Z"></path></svg>
+  ),
+  Envelope: (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="currentColor" {...props}><path d="M224,48H32a8,8,0,0,0-8,8V192a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A8,8,0,0,0,224,48ZM203.43,64,128,133.15,52.57,64ZM216,192H40V74.19l82.59,75.71a8,8,0,0,0,10.82,0L216,74.19V192Z"></path></svg>
+  ),
+  IdCard: (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="currentColor" {...props}><path d="M224,40H32A16,16,0,0,0,16,56V200a16,16,0,0,0,16,16H224a16,16,0,0,0,16-16V56A16,16,0,0,0,224,40ZM32,56H224V200H32ZM88,152a40,40,0,1,1,40-40A40,40,0,0,1,88,152ZM160,112h48a8,8,0,0,1,0,16H160a8,8,0,0,1,0-16Zm0,32h48a8,8,0,0,1,0,16H160a8,8,0,0,1,0-16Zm-25.33,32C119.93,151.19,85.42,136,70.67,136s-49.26,15.19-64,40a8,8,0,0,1-14.67-8c17.65-35.11,60.6-60.45,119.11-60.45s101.46,25.34,119.11,60.45A8,8,0,0,1,216,216a8,8,0,0,1-8-8,56.06,56.06,0,0,0-56-56A56,56,0,0,0,96,96a8,8,0,0,1,16,0A40,40,0,0,1,152,136a40,40,0,0,1-17.33,40Z"></path></svg>
+  ),
+  ArrowRight: (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="currentColor" {...props}><path d="M221.66,133.66l-72,72a8,8,0,0,1-11.32-11.32L196.69,136H40a8,8,0,0,1,0-16H196.69L138.34,61.66a8,8,0,0,1,11.32-11.32l72,72A8,8,0,0,1,221.66,133.66Z"></path></svg>
+  ),
+  CheckCircle: (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="currentColor" {...props}><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm45.66,85.66-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35a8,8,0,0,1,11.32,11.32Z"></path></svg>
+  )
+};
+
+export default function AuthPage() {
+  const [activeTab, setActiveTab] = useState('login'); // 'login' or 'register'
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  // Custom Message Box State (แทน alert)
+  const [message, setMessage] = useState({ show: false, type: '', text: '' });
+
+  // Theme Colors
+  const brandPurple = '#5B2B92';
+  const brandYellow = '#FFC72C';
+
+  // Handle Form Submission Mock
+  const handleSubmit = (e, type) => {
+    e.preventDefault();
+    setMessage({ show: false, type: '', text: '' }); // Reset
+
+    // Simulate API call
+    setTimeout(() => {
+      if (type === 'login') {
+        setMessage({ show: true, type: 'success', text: 'เข้าสู่ระบบสำเร็จ! กำลังพาดึงข้อมูลไปยังชั้นหนังสือ...' });
+      } else {
+        setMessage({ show: true, type: 'success', text: 'ลงทะเบียนสำเร็จ! กรุณาตรวจสอบอีเมลเพื่อยืนยันบัญชี' });
+      }
+      
+      // Auto hide message after 3 seconds
+      setTimeout(() => setMessage({ show: false, type: '', text: '' }), 3000);
+    }, 500);
+  };
+
+  return (
+    <div className="min-h-screen flex bg-[#F8FAFC] text-[#1E293B] font-['Noto_Sans_Thai',sans-serif]">
+      
+      {/* ------------------------------------- */}
+      {/* LEFT SIDE: Visual & Storytelling      */}
+      {/* ------------------------------------- */}
+      <div className="hidden lg:flex w-1/2 bg-[#5B2B92] relative overflow-hidden flex-col justify-between p-12 xl:p-20 text-white">
+        
+        {/* Abstract Background Decoration */}
+        <div className="absolute inset-0 z-0">
+            <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full bg-[#FFC72C]/20 blur-[100px]"></div>
+            <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] rounded-full bg-[#3b1563]/80 blur-[100px]"></div>
+            <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '32px 32px' }}></div>
+        </div>
+
+        {/* Top: Logo */}
+        <div className="relative z-10 flex items-center gap-3 w-fit cursor-default">
+            <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center text-[#FFC72C] border border-white/20 shadow-lg">
+                <Icons.Buildings className="w-7 h-7" />
+            </div>
+            <div className="flex flex-col">
+                <span className="font-bold text-lg leading-tight tracking-wide">วท.อำนาจเจริญ</span>
+                <span className="text-[11px] text-[#FFC72C] font-bold tracking-widest uppercase">E-Library</span>
+            </div>
+        </div>
+
+        {/* Middle: Value Proposition */}
+        <div className="relative z-10 flex flex-col gap-6 max-w-lg mt-12">
+            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 text-[#FFC72C] px-4 py-1.5 rounded-full text-sm font-bold w-fit shadow-sm">
+                <Icons.User className="w-4 h-4" />
+                สำหรับนักศึกษาและบุคลากร
+            </div>
+            <h1 className="text-4xl xl:text-5xl font-bold leading-tight drop-shadow-md">
+                ประตูสู่คลังปัญญาดิจิทัล<br/>
+                <span className="text-[#FFC72C]">ลูกม่วง-เหลือง</span>
+            </h1>
+            <p className="text-base text-[#F3E8FF] leading-relaxed font-medium">
+                เข้าถึงตำราเรียนสายวิชาชีพเฉพาะทาง คู่มือปฏิบัติงาน และระบบ AI สรุปเนื้อหา เพื่อพัฒนาทักษะวิชาชีพของคุณได้ทุกที่ ทุกเวลา
+            </p>
+        </div>
+
+        {/* Bottom: Social Proof */}
+        <div className="relative z-10 mt-12 flex items-center gap-4">
+            <div className="flex -space-x-3">
+                <img src="https://placehold.co/100x100/1D242B/FFFFFF?text=ชย" alt="Student 1" className="w-10 h-10 rounded-full border-2 border-[#5B2B92] object-cover" />
+                <img src="https://placehold.co/100x100/E05B35/FFFFFF?text=ชฟ" alt="Student 2" className="w-10 h-10 rounded-full border-2 border-[#5B2B92] object-cover" />
+                <div className="w-10 h-10 rounded-full border-2 border-[#5B2B92] bg-[#FFC72C] text-[#1E293B] flex items-center justify-center text-xs font-bold shadow-sm">+5k</div>
+            </div>
+            <p className="text-sm text-[#F3E8FF] font-medium">เพื่อนนักศึกษาใช้งานแล้วกว่า 5,000 คน</p>
+        </div>
+      </div>
+
+      {/* ------------------------------------- */}
+      {/* RIGHT SIDE: Authentication Form       */}
+      {/* ------------------------------------- */}
+      <div className="w-full lg:w-1/2 flex flex-col justify-between bg-white relative min-h-screen">
+        
+        {/* Mobile Header (Hidden on Desktop) */}
+        <div className="lg:hidden w-full p-5 flex justify-center items-center bg-white border-b border-slate-100 shrink-0 shadow-sm z-10">
+            <div className="flex items-center gap-2">
+                <div className="w-9 h-9 bg-[#5B2B92] rounded-lg flex items-center justify-center text-[#FFC72C] shadow-sm">
+                    <Icons.Buildings className="w-5 h-5" />
+                </div>
+                <div className="flex flex-col">
+                    <span className="font-bold text-[#5B2B92] leading-none text-sm">วท.อำนาจเจริญ</span>
+                    <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">E-Library</span>
+                </div>
+            </div>
+        </div>
+
+        {/* Custom Message Box (Toast Notification) */}
+        {message.show && (
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 animate-bounce">
+                <div className={`px-6 py-3 rounded-full shadow-lg flex items-center gap-2 text-sm font-bold ${message.type === 'success' ? 'bg-[#00a651] text-white' : 'bg-[#e53935] text-white'}`}>
+                    {message.type === 'success' && <Icons.CheckCircle className="w-5 h-5" />}
+                    {message.text}
+                </div>
+            </div>
+        )}
+
+        {/* Form Container Area */}
+        <div className="flex-grow flex items-center justify-center p-4 sm:p-8 w-full max-w-[500px] mx-auto">
+            <div className="w-full bg-white rounded-2xl shadow-none lg:shadow-xl lg:border border-slate-100 p-2 sm:p-10">
+                
+                {/* Tab Switcher */}
+                <div className="flex relative mb-8 border-b border-slate-100">
+                    <button 
+                        onClick={() => setActiveTab('login')} 
+                        className={`flex-1 pb-4 text-center text-base transition-colors focus:outline-none ${activeTab === 'login' ? 'font-bold text-[#5B2B92] border-b-2 border-[#5B2B92]' : 'font-semibold text-slate-400 hover:text-[#1E293B] border-b-2 border-transparent'}`}
+                    >
+                        เข้าสู่ระบบ
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('register')} 
+                        className={`flex-1 pb-4 text-center text-base transition-colors focus:outline-none ${activeTab === 'register' ? 'font-bold text-[#5B2B92] border-b-2 border-[#5B2B92]' : 'font-semibold text-slate-400 hover:text-[#1E293B] border-b-2 border-transparent'}`}
+                    >
+                        ลงทะเบียนใหม่
+                    </button>
+                </div>
+
+                {}
+                {/* --------------------- LOGIN FORM --------------------- */}
+                {activeTab === 'login' && (
+                    <form className="flex flex-col gap-5 animate-in fade-in slide-in-from-bottom-4 duration-300" onSubmit={(e) => handleSubmit(e, 'login')}>
+                        <div className="mb-2">
+                            <h2 className="text-2xl font-bold text-[#1E293B]">ยินดีต้อนรับกลับมา! 👋</h2>
+                            <p className="text-sm text-slate-500 mt-1">กรุณากรอกข้อมูลเพื่อเข้าถึงชั้นหนังสือของคุณ</p>
+                        </div>
+
+                        {/* Student ID / Email */}
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-sm font-bold text-[#1E293B]">รหัสนักศึกษา / อีเมล</label>
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#5B2B92] transition-colors">
+                                    <Icons.User className="w-5 h-5" />
+                                </div>
+                                <input 
+                                    type="text" 
+                                    className="w-full h-12 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-[#1E293B] placeholder-slate-400 focus:bg-white focus:border-[#5B2B92] focus:ring-2 focus:ring-[#5B2B92]/20 transition-all outline-none" 
+                                    placeholder="เช่น 6630123456" 
+                                    required 
+                                />
+                            </div>
+                        </div>
+
+                        {/* Password */}
+                        <div className="flex flex-col gap-1.5">
+                            <div className="flex justify-between items-center">
+                                <label className="text-sm font-bold text-[#1E293B]">รหัสผ่าน</label>
+                                <a href="#" className="text-xs font-bold text-[#5B2B92] hover:text-[#461E75] transition-colors">ลืมรหัสผ่าน?</a>
+                            </div>
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#5B2B92] transition-colors">
+                                    <Icons.Lock className="w-5 h-5" />
+                                </div>
+                                <input 
+                                    type={showPassword ? "text" : "password"} 
+                                    className="w-full h-12 pl-11 pr-12 bg-slate-50 border border-slate-200 rounded-xl text-[#1E293B] placeholder-slate-400 focus:bg-white focus:border-[#5B2B92] focus:ring-2 focus:ring-[#5B2B92]/20 transition-all outline-none" 
+                                    placeholder="••••••••" 
+                                    required 
+                                />
+                                <button 
+                                    type="button" 
+                                    onClick={() => setShowPassword(!showPassword)} 
+                                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-[#5B2B92] transition-colors focus:outline-none"
+                                >
+                                    {showPassword ? <Icons.EyeSlash className="w-5 h-5" /> : <Icons.Eye className="w-5 h-5" />}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Remember Me */}
+                        <div className="flex items-center mt-1">
+                            <input 
+                                type="checkbox" 
+                                id="remember"
+                                className="w-4 h-4 text-[#5B2B92] bg-slate-50 border-slate-300 rounded focus:ring-[#5B2B92] cursor-pointer accent-[#5B2B92]"
+                            />
+                            <label htmlFor="remember" className="ml-2 text-sm text-slate-500 cursor-pointer font-medium">จดจำการเข้าสู่ระบบของฉัน</label>
+                        </div>
+
+                        {/* Submit Button */}
+                        <button 
+                            type="submit" 
+                            className="w-full h-12 mt-2 bg-[#5B2B92] hover:bg-[#461E75] text-white font-bold rounded-xl shadow-md shadow-[#5B2B92]/20 transition-all duration-300 active:scale-95 flex justify-center items-center gap-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#5B2B92]"
+                        >
+                            เข้าสู่ระบบ <Icons.ArrowRight className="w-5 h-5" />
+                        </button>
+
+                        {/* Divider */}
+                        <div className="relative flex items-center py-2 mt-2">
+                            <div className="flex-grow border-t border-slate-200"></div>
+                            <span className="flex-shrink-0 mx-4 text-slate-400 text-xs font-bold uppercase tracking-wider">หรือเข้าสู่ระบบด้วย</span>
+                            <div className="flex-grow border-t border-slate-200"></div>
+                        </div>
+
+                        {/* SSO Buttons */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <button type="button" className="w-full h-11 bg-white border border-slate-200 hover:bg-slate-50 text-[#1E293B] font-bold rounded-xl transition-colors flex items-center justify-center gap-2 shadow-sm focus:outline-none">
+                                <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="Google" />
+                                <span className="text-sm">Google</span>
+                            </button>
+                            <button type="button" className="w-full h-11 bg-[#1877F2]/10 border border-[#1877F2]/20 hover:bg-[#1877F2]/20 text-[#1877F2] font-bold rounded-xl transition-colors flex items-center justify-center gap-2 shadow-sm focus:outline-none">
+                                {/* Facebook SVG Path */}
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm8,191.63V152h24a8,8,0,0,0,0-16H136V112a16,16,0,0,1,16-16h16a8,8,0,0,0,0-16H152a32,32,0,0,0-32,32v24H96a8,8,0,0,0,0,16h24v63.63a88,88,0,1,1,16,0Z"></path></svg>
+                                <span className="text-sm">Facebook</span>
+                            </button>
+                            <button type="button" className="w-full h-11 col-span-2 bg-[#FFC72C] hover:bg-[#F0B710] text-[#1E293B] font-bold rounded-xl transition-colors flex items-center justify-center gap-2 shadow-sm focus:outline-none mt-1">
+                                <Icons.User className="w-5 h-5" />
+                                <span className="text-sm">ระบบนักศึกษา (ศธ.02)</span>
+                            </button>
+                        </div>
+                    </form>
+                )}
+
+                {}
+                {/* --------------------- REGISTER FORM --------------------- */}
+                {activeTab === 'register' && (
+                    <form className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-300" onSubmit={(e) => handleSubmit(e, 'register')}>
+                        <div className="mb-2">
+                            <h2 className="text-2xl font-bold text-[#1E293B]">สร้างบัญชีใหม่ ✨</h2>
+                            <p className="text-sm text-slate-500 mt-1">สงวนสิทธิ์เฉพาะบุคลากรและนักศึกษาวิทยาลัยเทคนิคอำนาจเจริญ</p>
+                        </div>
+
+                        {/* Full Name */}
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-sm font-bold text-[#1E293B]">ชื่อ - นามสกุล</label>
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#5B2B92] transition-colors">
+                                    <Icons.IdCard className="w-5 h-5" />
+                                </div>
+                                <input type="text" className="w-full h-12 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-[#1E293B] placeholder-slate-400 focus:bg-white focus:border-[#5B2B92] focus:ring-2 focus:ring-[#5B2B92]/20 transition-all outline-none" placeholder="เช่น นายรักเรียน เพียรศึกษา" required />
+                            </div>
+                        </div>
+
+                        {/* Student ID */}
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-sm font-bold text-[#1E293B]">รหัสนักศึกษา <span className="text-red-500">*</span></label>
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#5B2B92] transition-colors">
+                                    <span className="font-bold text-lg">#</span>
+                                </div>
+                                <input type="text" className="w-full h-12 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-[#1E293B] placeholder-slate-400 focus:bg-white focus:border-[#5B2B92] focus:ring-2 focus:ring-[#5B2B92]/20 transition-all outline-none" placeholder="รหัส 10 หลัก" required />
+                            </div>
+                        </div>
+
+                        {/* Email */}
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-sm font-bold text-[#1E293B]">อีเมล (วิทยาลัยฯ หรือส่วนตัว)</label>
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#5B2B92] transition-colors">
+                                    <Icons.Envelope className="w-5 h-5" />
+                                </div>
+                                <input type="email" className="w-full h-12 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-[#1E293B] placeholder-slate-400 focus:bg-white focus:border-[#5B2B92] focus:ring-2 focus:ring-[#5B2B92]/20 transition-all outline-none" placeholder="example@amnattech.ac.th" required />
+                            </div>
+                        </div>
+
+                        {/* Password */}
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-sm font-bold text-[#1E293B]">ตั้งรหัสผ่าน</label>
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#5B2B92] transition-colors">
+                                    <Icons.Lock className="w-5 h-5" />
+                                </div>
+                                <input 
+                                    type={showPassword ? "text" : "password"} 
+                                    className="w-full h-12 pl-11 pr-12 bg-slate-50 border border-slate-200 rounded-xl text-[#1E293B] placeholder-slate-400 focus:bg-white focus:border-[#5B2B92] focus:ring-2 focus:ring-[#5B2B92]/20 transition-all outline-none" 
+                                    placeholder="ขั้นต่ำ 8 ตัวอักษร" 
+                                    required minLength={8} 
+                                />
+                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-[#5B2B92] transition-colors focus:outline-none">
+                                    {showPassword ? <Icons.EyeSlash className="w-5 h-5" /> : <Icons.Eye className="w-5 h-5" />}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Terms */}
+                        <div className="flex items-start mt-2">
+                            <div className="flex items-center h-5">
+                                <input type="checkbox" id="terms" required className="w-4 h-4 text-[#5B2B92] bg-slate-50 border-slate-300 rounded focus:ring-[#5B2B92] cursor-pointer mt-0.5 accent-[#5B2B92]" />
+                            </div>
+                            <label htmlFor="terms" className="ml-2 text-xs text-slate-500 cursor-pointer leading-relaxed font-medium">
+                                ฉันยอมรับ <a href="#" className="text-[#5B2B92] font-bold hover:underline">เงื่อนไขการให้บริการ</a> และ <a href="#" className="text-[#5B2B92] font-bold hover:underline">นโยบายความเป็นส่วนตัว (PDPA)</a> ของวิทยาลัยเทคนิคอำนาจเจริญ
+                            </label>
+                        </div>
+
+                        {/* Submit Button */}
+                        <button type="submit" className="w-full h-12 mt-2 bg-[#FFC72C] hover:bg-[#F0B710] text-[#1E293B] font-bold rounded-xl shadow-md transition-all duration-300 active:scale-95 flex justify-center items-center gap-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FFC72C]">
+                            สร้างบัญชีใช้งาน
+                        </button>
+                    </form>
+                )}
+
+            </div>
+        </div>
+
+        {/* Footer */}
+        <footer className="w-full text-center p-6 text-xs text-slate-400 font-medium shrink-0">
+            &copy; 2026 E-Library วท.อำนาจเจริญ. All rights reserved.
+        </footer>
+      </div>
+    </div>
+  );
+}

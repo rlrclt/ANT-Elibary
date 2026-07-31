@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meb Design System — Style Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<link rel="stylesheet" href="meb-design-system.css">
+<style>
+  /* สไตล์เฉพาะหน้า demo นี้เท่านั้น ไม่ใช่ส่วนหนึ่งของ framework */
+  .demo-block { margin-bottom: 48px; }
+  .demo-block h2 { font-size: 1.25rem; font-weight: 700; margin-bottom: 4px; }
+  .demo-block p.demo-desc { color: var(--meb-text-secondary); font-size: 0.875rem; margin-top: 0; margin-bottom: 16px; }
+  .demo-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .demo-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+  .demo-swatch { border: 1px solid var(--meb-border); border-radius: 8px; overflow: hidden; font-size: 0.75rem; }
+  .demo-swatch__color { height: 56px; }
+  .demo-swatch__label { padding: 6px 8px; background: #fff; }
+</style>
+</head>
+<body>
+
+<header class="meb-header meb-sticky-top">
+  <div class="meb-header__inner">
+    <div class="meb-logo">meb</div>
+    <div class="meb-search">
+      <input type="text" placeholder="ค้นหาหนังสือ...">
+      <i class="ph ph-magnifying-glass meb-search__icon"></i>
+    </div>
+    <div class="demo-row" style="gap:4px;">
+      <button class="meb-btn-icon" style="position:relative;">
+        <i class="ph ph-shopping-cart" style="font-size:1.25rem;"></i>
+        <span class="meb-cart-badge">3</span>
+      </button>
+      <button class="meb-btn-icon"><i class="ph ph-user" style="font-size:1.25rem;"></i></button>
+    </div>
+  </div>
+</header>
+
+<nav class="meb-nav">
+  <div class="meb-container meb-nav__tabs meb-hide-scrollbar">
+    <a href="#" class="meb-nav__tab meb-nav__tab--active">หน้าแรก</a>
+    <a href="#" class="meb-nav__tab">ขายดี</a>
+    <a href="#" class="meb-nav__tab">มาใหม่</a>
+    <a href="#" class="meb-nav__tab meb-nav__tab--promo">โปรโมชัน</a>
+    <a href="#" class="meb-nav__tab">ฟรีกระจาย</a>
+  </div>
+</nav>
+
+<main class="meb-container" style="padding-top:32px;">
+
+  <h1 class="meb-h1" style="margin-bottom:4px;">Meb Design System</h1>
+  <p class="meb-text-secondary" style="margin-bottom:40px;">Style guide ทุกคอมโพเนนต์ในเฟรมเวิร์ก — เปิดไฟล์นี้เพื่อตรวจว่า meb-design-system.css ทำงานถูกต้องก่อนเอาไปใช้จริง</p>
+
+  <!-- COLORS -->
+  <section class="demo-block">
+    <h2>1. สี (Colors)</h2>
+    <p class="demo-desc">สีหลักของระบบ ห้ามใช้ค่านอกเหนือจากนี้</p>
+    <div class="demo-swatches">
+      <div class="demo-swatch"><div class="demo-swatch__color" style="background:var(--meb-green)"></div><div class="demo-swatch__label">--meb-green<br>#00a651</div></div>
+      <div class="demo-swatch"><div class="demo-swatch__color" style="background:var(--meb-green-hover)"></div><div class="demo-swatch__label">--meb-green-hover</div></div>
+      <div class="demo-swatch"><div class="demo-swatch__color" style="background:var(--meb-green-light)"></div><div class="demo-swatch__label">--meb-green-light</div></div>
+      <div class="demo-swatch"><div class="demo-swatch__color" style="background:var(--meb-red)"></div><div class="demo-swatch__label">--meb-red<br>#e53935</div></div>
+      <div class="demo-swatch"><div class="demo-swatch__color" style="background:var(--meb-ribbon-red)"></div><div class="demo-swatch__label">--meb-ribbon-red</div></div>
+      <div class="demo-swatch"><div class="demo-swatch__color" style="background:var(--meb-text)"></div><div class="demo-swatch__label">--meb-text</div></div>
+      <div class="demo-swatch"><div class="demo-swatch__color" style="background:var(--meb-bg)"></div><div class="demo-swatch__label">--meb-bg</div></div>
+      <div class="demo-swatch"><div class="demo-swatch__color" style="background:var(--meb-promo-bg)"></div><div class="demo-swatch__label">--meb-promo-bg</div></div>
+      <div class="demo-swatch"><div class="demo-swatch__color" style="background:var(--meb-info-bg)"></div><div class="demo-swatch__label">--meb-info-bg</div></div>
+    </div>
+  </section>
+
+  <!-- BUTTONS -->
+  <section class="demo-block">
+    <h2>2. ปุ่ม (Buttons)</h2>
+    <p class="demo-desc">Primary ใช้เขียวเสมอ, Secondary เป็น outline, ปุ่มเล็กสำหรับการ์ดหนังสือ</p>
+    <div class="demo-row">
+      <button class="meb-btn meb-btn--primary"><i class="ph ph-shopping-cart"></i> ซื้อเลย</button>
+      <button class="meb-btn meb-btn--secondary">ทดลองอ่าน</button>
+      <button class="meb-btn meb-btn--primary meb-btn--sm">฿ 159</button>
+      <button class="meb-btn-icon"><i class="ph ph-heart" style="font-size:1.25rem;"></i></button>
+    </div>
+  </section>
+
+  <!-- TAGS -->
+  <section class="demo-block">
+    <h2>3. Tags</h2>
+    <div class="demo-row">
+      <span class="meb-tag meb-tag--primary">#นิยายวาย</span>
+      <span class="meb-tag meb-tag--secondary">Boy Love / Yaoi</span>
+      <span class="meb-tag meb-tag--secondary">omegaverse</span>
+    </div>
+  </section>
+
+  <!-- BOOK GRID with 3 badge styles -->
+  <section class="demo-block">
+    <h2>4. การ์ดหนังสือ + Badge 3 สไตล์</h2>
+    <p class="demo-desc">ป้าย % (ซ้ายบน) / ริบบอน Best Seller (ขวาบน) / เหรียญอันดับ (ใช้เฉพาะ section ขายดี)</p>
+    <div class="meb-book-grid">
+
+      <div class="meb-book-card">
+        <div class="meb-book-card__cover-wrap">
+          <img src="https://placehold.co/300x450/475569/ffffff?text=Cover+1" alt="">
+          <span class="meb-badge-discount">-15%</span>
+        </div>
+        <h3 class="meb-book-card__title meb-line-clamp-2">ไม่เหมาะไม่ควร</h3>
+        <p class="meb-book-card__author meb-line-clamp-1">แมค</p>
+        <p class="meb-book-card__meta">Boy Love / Yaoi</p>
+        <div class="meb-book-card__footer">
+          <span class="meb-rating">
+            <i class="ph-fill ph-star meb-star--filled"></i><i class="ph-fill ph-star meb-star--filled"></i><i class="ph-fill ph-star meb-star--filled"></i><i class="ph-fill ph-star meb-star--filled"></i><i class="ph-fill ph-star-half meb-star--filled"></i>
+            <span class="meb-rating__count">(45)</span>
+          </span>
+          <span class="meb-book-card__price">฿159</span>
+        </div>
+      </div>
+
+      <div class="meb-book-card">
+        <div class="meb-book-card__cover-wrap">
+          <img src="https://placehold.co/300x450/3b82f6/ffffff?text=Cover+2" alt="">
+          <span class="meb-badge-ribbon">Best<br>Seller</span>
+        </div>
+        <h3 class="meb-book-card__title meb-line-clamp-2">พอกันในวันรัก</h3>
+        <p class="meb-book-card__author meb-line-clamp-1">พิมพ์มาดา</p>
+        <p class="meb-book-card__meta">โรมานซ์</p>
+        <div class="meb-book-card__footer">
+          <span class="meb-rating">
+            <i class="ph-fill ph-star meb-star--filled"></i><i class="ph-fill ph-star meb-star--filled"></i><i class="ph-fill ph-star meb-star--filled"></i><i class="ph ph-star"></i><i class="ph ph-star"></i>
+            <span class="meb-rating__count">(12)</span>
+          </span>
+          <span class="meb-book-card__price">฿249</span>
+        </div>
+      </div>
+
+      <div class="meb-book-card">
+        <div class="meb-book-card__cover-wrap">
+          <img src="https://placehold.co/300x450/1e293b/ffffff?text=Cover+3" alt="">
+          <span class="meb-rank-badge meb-rank-badge--1">1</span>
+        </div>
+        <h3 class="meb-book-card__title meb-line-clamp-2">ทะลุมิติไปเป็นมารดาของตัวร้าย</h3>
+        <p class="meb-book-card__author meb-line-clamp-1">อวี๋ซิน / ลี่ลี่</p>
+        <p class="meb-book-card__meta">ขายดีประจำสัปดาห์</p>
+        <div class="meb-book-card__footer">
+          <span class="meb-rating">
+            <i class="ph-fill ph-star meb-star--filled"></i><i class="ph-fill ph-star meb-star--filled"></i><i class="ph-fill ph-star meb-star--filled"></i><i class="ph-fill ph-star meb-star--filled"></i><i class="ph-fill ph-star meb-star--filled"></i>
+          </span>
+          <span>
+            <span class="meb-book-card__price-old">฿320</span>
+            <span class="meb-book-card__price">฿256</span>
+          </span>
+        </div>
+      </div>
+
+      <div class="meb-book-card">
+        <div class="meb-book-card__cover-wrap">
+          <img src="https://placehold.co/300x450/8b5cf6/ffffff?text=Cover+4" alt="">
+          <span class="meb-rank-badge meb-rank-badge--2">2</span>
+        </div>
+        <h3 class="meb-book-card__title meb-line-clamp-2">ประธานาธิบดีผู้นั้นคือสามีฉันเอง</h3>
+        <p class="meb-book-card__author meb-line-clamp-1">Blue_Sky</p>
+        <p class="meb-book-card__meta">ขายดีประจำสัปดาห์</p>
+        <div class="meb-book-card__footer">
+          <span class="meb-rating">
+            <i class="ph-fill ph-star meb-star--filled"></i><i class="ph-fill ph-star meb-star--filled"></i><i class="ph-fill ph-star meb-star--filled"></i><i class="ph-fill ph-star meb-star--filled"></i><i class="ph-fill ph-star-half meb-star--filled"></i>
+          </span>
+          <span class="meb-book-card__price">฿199</span>
+        </div>
+      </div>
+
+      <div class="meb-book-card">
+        <div class="meb-book-card__cover-wrap">
+          <img src="https://placehold.co/300x450/be123c/ffffff?text=Cover+5" alt="">
+        </div>
+        <h3 class="meb-book-card__title meb-line-clamp-2">เกิดใหม่ชาตินี้ข้าจะเป็นนางเอก</h3>
+        <p class="meb-book-card__author meb-line-clamp-1">ชิงชิง</p>
+        <p class="meb-book-card__meta">แฟนตาซี</p>
+        <div class="meb-book-card__footer">
+          <span class="meb-rating">
+            <i class="ph ph-star"></i><i class="ph ph-star"></i><i class="ph ph-star"></i><i class="ph ph-star"></i><i class="ph ph-star"></i>
+          </span>
+          <span class="meb-book-card__price">฿155</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- SECTION WRAPPER example -->
+  <section class="demo-block">
+    <h2>5. Section Wrapper</h2>
+    <div class="meb-section">
+      <div class="meb-section__header">
+        <div class="meb-section__title">
+          <span class="meb-section__accent-bar"></span>
+          มาใหม่
+        </div>
+        <a href="#" class="meb-section__view-all">ดูทั้งหมด ></a>
+      </div>
+      <div class="meb-section__title" style="font-size:0.875rem; font-weight:400; color:var(--meb-text-secondary);">
+        (ใส่ .meb-book-grid ไว้ตรงนี้)
+      </div>
+    </div>
+    <div class="meb-section">
+      <div class="meb-section__header">
+        <div class="meb-section__title">
+          <i class="ph-fill ph-trophy meb-section__accent-icon meb-section__accent-icon--trophy"></i>
+          ขายดีประจำสัปดาห์
+        </div>
+        <a href="#" class="meb-section__view-all">ดูทั้งหมด ></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRICE BOX -->
+  <section class="demo-block">
+    <h2>6. Price Box (หน้ารายละเอียดสินค้า)</h2>
+    <div class="meb-price-box">
+      <span class="meb-price-box__ribbon-tag">โปรโมชันสุดพิเศษ เหลือ 27 วัน</span>
+      <div class="meb-price-box__row">
+        <div>
+          <div>
+            <span class="meb-price-box__price">฿ 199</span>
+            <span class="meb-price-box__price-old">ราคาปก 340 บาท</span>
+          </div>
+          <p class="meb-price-box__savings">ประหยัด 41%</p>
+        </div>
+        <div class="meb-price-box__actions">
+          <button class="meb-btn meb-btn--secondary" style="flex:1;">ทดลองอ่าน</button>
+          <button class="meb-btn meb-btn--primary" style="flex:1;"><i class="ph ph-shopping-cart"></i> ซื้อเลย</button>
+        </div>
+      </div>
+      <div class="meb-price-box__secondary-actions">
+        <button><i class="ph ph-heart"></i> อยากได้ (Wishlist)</button>
+        <button><i class="ph ph-gift"></i> ซื้อเป็นของขวัญ</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- INFO GRID -->
+  <section class="demo-block">
+    <h2>7. Info Grid</h2>
+    <div class="meb-info-grid">
+      <div class="meb-info-grid__row"><span class="meb-info-grid__label">ซีรีส์:</span><span class="meb-info-grid__value">Troublemaker</span></div>
+      <div class="meb-info-grid__row"><span class="meb-info-grid__label">นักวาด:</span><span class="meb-info-grid__value">Yojibi</span></div>
+      <div class="meb-info-grid__row"><span class="meb-info-grid__label">ประเภทไฟล์:</span><span class="meb-info-grid__value">pdf, epub</span></div>
+      <div class="meb-info-grid__row"><span class="meb-info-grid__label">ความยาว:</span><span class="meb-info-grid__value">341 หน้า</span></div>
+    </div>
+  </section>
+
+  <!-- ALERT BOX -->
+  <section class="demo-block">
+    <h2>8. Alert Box</h2>
+    <div class="meb-alert">
+      <div>
+        <p class="meb-alert__title">สนใจเวอร์ชันกระดาษ เชิญทางนี้!</p>
+        <p class="meb-alert__text">เวอร์ชันกระดาษมีวางขายที่เว็บไซต์สำนักพิมพ์ จะไม่มีขายโดย MEB นะจ๊ะ</p>
+      </div>
+      <a href="#" class="meb-alert__action">สั่งซื้อกับ สนพ.</a>
+    </div>
+  </section>
+
+  <!-- SOCIAL -->
+  <section class="demo-block">
+    <h2>9. Social Share</h2>
+    <div class="demo-row">
+      <button class="meb-social-btn meb-social-btn--facebook"><i class="ph-fill ph-facebook-logo"></i></button>
+      <button class="meb-social-btn meb-social-btn--x"><i class="ph-fill ph-x-logo"></i></button>
+      <button class="meb-social-btn meb-social-btn--line"><i class="ph-fill ph-chat-circle-dots"></i></button>
+      <button class="meb-social-btn meb-social-btn--link"><i class="ph ph-link"></i></button>
+    </div>
+  </section>
+
+  <!-- LAYOUT WITH SIDEBAR -->
+  <section class="demo-block">
+    <h2>10. Layout พร้อม Sidebar (ย่อ preview)</h2>
+    <div class="meb-layout-with-sidebar" style="border:1px dashed var(--meb-border); border-radius:12px; padding:0 12px;">
+      <aside class="meb-sidebar-col">
+        <div class="meb-sidebar">
+          <div class="meb-sidebar__header"><i class="ph ph-books"></i> เลือกหมวดหมู่</div>
+          <ul class="meb-sidebar__list">
+            <li><a href="#">นิยายแปล</a></li>
+            <li><a href="#">นิยาย Boy Love / Yaoi</a></li>
+            <li><a href="#" class="meb-sidebar__list-all">ดูหมวดหมู่ทั้งหมด →</a></li>
+          </ul>
+        </div>
+      </aside>
+      <div class="meb-main-col">
+        <p class="meb-text-secondary meb-text-sm" style="padding:16px 0;">พื้นที่เนื้อหาหลัก (.meb-main-col) — grid หนังสือในเลย์เอาต์นี้จะลดเหลือ 4 คอลัมน์อัตโนมัติบนเดสก์ท็อป</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="meb-footer-full">
+  <div class="meb-footer-full__grid">
+    <div>
+      <h3>meb (e-book)</h3>
+      <ul>
+        <li><a href="#">หน้าแรก</a></li>
+        <li><a href="#">วิธีการสั่งซื้อ</a></li>
+        <li><a href="#">ติดต่อเรา</a></li>
+      </ul>
+    </div>
+    <div>
+      <h3>หมวดหมู่ยอดนิยม</h3>
+      <ul>
+        <li><a href="#">นิยายรัก</a></li>
+        <li><a href="#">การ์ตูน</a></li>
+      </ul>
+    </div>
+    <div class="meb-footer-full__col--wide">
+      <h3>ดาวน์โหลดแอปพลิเคชัน</h3>
+      <p class="meb-text-sm">Style guide เท่านั้น ไม่ใช่ลิงก์จริง</p>
+    </div>
+  </div>
+  <div class="meb-footer-full__bottom">© 2026 Meb Design System — สร้างเพื่อใช้เป็นเฟรมเวิร์กส่วนตัว</div>
+</footer>
+
+</body>
+</html>
