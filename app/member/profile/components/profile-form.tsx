@@ -2,13 +2,18 @@
 
 import { useState, useTransition } from "react";
 import { PhosphorIcon } from "@/app/components/phosphor-icon";
-import { TextField, SubmitButton } from "@/app/components/form-controls";
+import { TextField, SubmitButton, SelectField } from "@/app/components/form-controls";
 import { updateProfileAction } from "../actions";
 import { AvatarUploader } from "@/app/shared/components/avatar-uploader";
 import type { Profile } from "./profile-client";
+import type { DropdownOption } from "@/app/staff/settings/dropdowns/actions";
 
 type ProfileFormProps = {
   initialProfile: Profile;
+  departments: DropdownOption[];
+  classLevels: DropdownOption[];
+  roomLevels: DropdownOption[];
+  classGroups: DropdownOption[];
 };
 
 const roleLabel = (role: string): string => {
@@ -22,11 +27,23 @@ const roleLabel = (role: string): string => {
  * กด "แก้ไขข้อมูล" → เปิดฟอร์มแก้ไข
  * บันทึก/ยกเลิก → กลับสู่โหมดดู
  */
-export function ProfileForm({ initialProfile }: ProfileFormProps) {
+export function ProfileForm({
+  initialProfile,
+  departments,
+  classLevels,
+  roomLevels,
+  classGroups,
+}: ProfileFormProps) {
   const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  const userType = initialProfile.user_type || "student";
+  const [selectedDeptId, setSelectedDeptId] = useState(initialProfile.department_id || "");
+  const [selectedClassLevelId, setSelectedClassLevelId] = useState(initialProfile.class_level_id || "");
+  const [selectedRoomLevelId, setSelectedRoomLevelId] = useState(initialProfile.room_level_id || "");
+  const [selectedClassGroupId, setSelectedClassGroupId] = useState(initialProfile.class_group_id || "");
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -84,9 +101,20 @@ export function ProfileForm({ initialProfile }: ProfileFormProps) {
           <InfoRow label="รหัสสมาชิก" value={initialProfile.user_id_code} icon="identification-card" />
           <InfoRow label="อีเมล" value={initialProfile.email || "—"} icon="envelope-simple" hint="เปลี่ยนในแท็บความปลอดภัย" />
           <InfoRow label="เบอร์โทรศัพท์" value={initialProfile.phone || "—"} icon="phone" />
-          <InfoRow label="แผนก / สังกัด" value={initialProfile.department || "—"} icon="buildings" />
-          <InfoRow label="ระดับชั้น" value={initialProfile.class_level || "—"} icon="graduation-cap" />
-          <InfoRow label="เลขที่" value={initialProfile.class_number || "—"} icon="hash" />
+          
+          {userType !== "external" && (
+            <InfoRow label="แผนก / สังกัด" value={initialProfile.department || "—"} icon="buildings" />
+          )}
+
+          {userType === "student" && (
+            <>
+              <InfoRow label="ระดับชั้น" value={initialProfile.class_level || "—"} icon="graduation-cap" />
+              <InfoRow label="ห้องเรียน/กลุ่มเรียน" value={initialProfile.room_level || "—"} icon="door" />
+              <InfoRow label="รหัสกลุ่มเรียน" value={initialProfile.class_group || "—"} icon="users" />
+              <InfoRow label="เลขที่" value={initialProfile.class_number || "—"} icon="hash" />
+            </>
+          )}
+
           <InfoRow label="บทบาท" value={roleLabel(initialProfile.role)} icon="shield-check" />
           <InfoRow label="ค่าปรับคงค้าง" value={`฿ ${Number(initialProfile.fine_balance).toFixed(2)}`} icon="currency-dollar" />
         </dl>
@@ -165,32 +193,66 @@ export function ProfileForm({ initialProfile }: ProfileFormProps) {
           icon="phone"
           defaultValue={initialProfile.phone}
         />
-        <TextField
-          label="แผนก / สังกัด"
-          name="department"
-          type="text"
-          placeholder="เช่น เทคโนโลยีสารสนเทศ"
-          icon="buildings"
-          defaultValue={initialProfile.department}
-        />
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <TextField
-            label="ระดับชั้น"
-            name="class_level"
-            type="text"
-            placeholder="เช่น ปวช. 1"
-            icon="graduation-cap"
-            defaultValue={initialProfile.class_level}
+        {userType !== "external" && (
+          <SelectField
+            label="แผนกวิชา"
+            name="department_id"
+            required
+            value={selectedDeptId}
+            onChange={(e) => setSelectedDeptId(e.target.value)}
+            options={departments.map((d) => ({ value: d.id, label: d.name }))}
+            icon="tree-structure"
           />
-          <TextField
-            label="เลขที่"
-            name="class_number"
-            type="text"
-            placeholder="เช่น 15"
-            icon="hash"
-            defaultValue={initialProfile.class_number}
-          />
-        </div>
+        )}
+
+        {userType === "student" && (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <SelectField
+                label="ระดับชั้น"
+                name="class_level_id"
+                required
+                value={selectedClassLevelId}
+                onChange={(e) => setSelectedClassLevelId(e.target.value)}
+                options={classLevels.map((c) => ({ value: c.id, label: c.name }))}
+                icon="graduation-cap"
+              />
+
+              <SelectField
+                label="กลุ่มเรียน/ห้องเรียน"
+                name="room_level_id"
+                required
+                value={selectedRoomLevelId}
+                onChange={(e) => setSelectedRoomLevelId(e.target.value)}
+                options={roomLevels.map((r) => ({ value: r.id, label: r.name }))}
+                icon="users"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <SelectField
+                label="รหัสกลุ่มเรียน"
+                name="class_group_id"
+                required
+                value={selectedClassGroupId}
+                onChange={(e) => setSelectedClassGroupId(e.target.value)}
+                options={classGroups
+                  .filter((g) => g.department_id === selectedDeptId && g.class_level_id === selectedClassLevelId)
+                  .map((g) => ({ value: g.id, label: g.name }))}
+                icon="users"
+              />
+
+              <TextField
+                label="เลขที่"
+                name="class_number"
+                type="text"
+                placeholder="เช่น 15"
+                icon="hash"
+                defaultValue={initialProfile.class_number}
+              />
+            </div>
+          </>
+        )}
 
         {/* ที่อยู่ — textarea */}
         <div className="mb-4">

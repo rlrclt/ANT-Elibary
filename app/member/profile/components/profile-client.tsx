@@ -8,6 +8,8 @@ import { ChangeEmailForm } from "./change-email-form";
 import { ForgotPasswordModal } from "./forgot-password-modal";
 import { LineLinkSection } from "@/app/shared/components/line-link-section";
 
+import { getDropdownOptionsAction, type DropdownOption } from "@/app/staff/settings/dropdowns/actions";
+
 export type Profile = {
   id: string;
   full_name: string;
@@ -23,11 +25,22 @@ export type Profile = {
   fine_balance: number;
   borrow_limit: number;
   created_at: string;
+  user_type?: string;
+  department_id?: string;
+  class_level_id?: string;
+  room_level_id?: string;
+  room_level?: string;
+  class_group_id?: string;
+  class_group?: string;
 };
 
 type ProfileClientProps = {
   initialProfile: Profile;
   userEmail: string | null;
+  departments: DropdownOption[];
+  classLevels: DropdownOption[];
+  roomLevels: DropdownOption[];
+  classGroups: DropdownOption[];
 };
 
 type TabKey = "profile" | "security" | "notifications";
@@ -62,10 +75,17 @@ const SECURITY_OPTIONS: {
 ];
 
 /**
- * ProfileClient — คอมโพเนนต์หลักสำหรับหน้าโปรไลล์
- * จัดการ: หัวหน้าโปรไลล์ (avatar + ชื่อ + role badge), tab navigation, และเนื้อหา tab
+ * ProfileClient — คอมโพเนนต์หลักสำหรับหน้าโปรไฟล์
+ * จัดการ: หัวหน้าโปรไฟล์ (avatar + ชื่อ + role badge), tab navigation, และเนื้อหา tab
  */
-export function ProfileClient({ initialProfile, userEmail }: ProfileClientProps) {
+export function ProfileClient({
+  initialProfile,
+  userEmail,
+  departments,
+  classLevels,
+  roomLevels,
+  classGroups,
+}: ProfileClientProps) {
   const [activeTab, setActiveTab] = useState<TabKey>("profile");
   const [securityOption, setSecurityOption] = useState<SecurityOption | null>(null);
   const [forgotOpen, setForgotOpen] = useState(false);
@@ -141,7 +161,13 @@ export function ProfileClient({ initialProfile, userEmail }: ProfileClientProps)
 
       {/* Tab content */}
       {activeTab === "profile" && (
-        <ProfileForm initialProfile={initialProfile} />
+        <ProfileForm
+          initialProfile={initialProfile}
+          departments={departments}
+          classLevels={classLevels}
+          roomLevels={roomLevels}
+          classGroups={classGroups}
+        />
       )}
 
       {activeTab === "security" && (

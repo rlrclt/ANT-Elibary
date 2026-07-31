@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { ProfileClient } from "./components/profile-client";
+import { getDropdownOptionsAction } from "@/app/staff/settings/dropdowns/actions";
 
 export const metadata: Metadata = {
-  title: "โปรไลล์ของฉัน",
+  title: "โปรไฟล์ของฉัน",
 };
 
 /**
- * หน้าโปรไลล์สมาชิก (/member/profile)
+ * หน้าโปรไฟล์สมาชิก (/member/profile)
  * Server component — ตรวจสอบ session และดึงข้อมูล profile จาก public.users
  * แล้วส่งให้ ProfileClient จัดการ UI + tabs
  */
@@ -20,11 +21,16 @@ export default async function MemberProfilePage() {
 
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase
-    .from("users")
-    .select("*")
-    .eq("id", user.id)
-    .maybeSingle();
+  const [profileRes, dropdownsRes] = await Promise.all([
+    supabase
+      .from("users")
+      .select("*")
+      .eq("id", user.id)
+      .maybeSingle(),
+    getDropdownOptionsAction(),
+  ]);
+
+  const profile = profileRes.data;
 
   if (!profile) {
     redirect("/login");
@@ -47,8 +53,19 @@ export default async function MemberProfilePage() {
         fine_balance: profile.fine_balance ?? 0,
         borrow_limit: profile.borrow_limit ?? 5,
         created_at: profile.created_at,
+        user_type: profile.user_type,
+        department_id: profile.department_id,
+        class_level_id: profile.class_level_id,
+        room_level_id: profile.room_level_id,
+        room_level: profile.room_level ?? "",
+        class_group_id: profile.class_group_id,
+        class_group: profile.class_group,
       }}
       userEmail={user.email ?? null}
+      departments={dropdownsRes.departments || []}
+      classLevels={dropdownsRes.classLevels || []}
+      roomLevels={dropdownsRes.roomLevels || []}
+      classGroups={dropdownsRes.classGroups || []}
     />
   );
 }

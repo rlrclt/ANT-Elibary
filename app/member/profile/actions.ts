@@ -47,26 +47,28 @@ export async function updateProfileAction(
   const fullName = String(formData.get("full_name") ?? "").trim();
   if (!fullName) return { error: "กรุณากรอกชื่อ-สกุล" };
 
-  const profile: ProfileData = {
-    full_name: fullName,
-    phone: String(formData.get("phone") ?? "").trim(),
-    department: String(formData.get("department") ?? "").trim(),
-    class_level: String(formData.get("class_level") ?? "").trim(),
-    class_number: String(formData.get("class_number") ?? "").trim(),
-    address: String(formData.get("address") ?? "").trim(),
-    avatar_url: String(formData.get("avatar_url") ?? "").trim(),
-  };
+  const phone = String(formData.get("phone") ?? "").trim();
+  const address = String(formData.get("address") ?? "").trim();
+  const avatarUrl = String(formData.get("avatar_url") ?? "").trim();
+  const classNumber = String(formData.get("class_number") ?? "").trim();
+
+  const departmentId = String(formData.get("department_id") ?? "").trim() || null;
+  const classLevelId = String(formData.get("class_level_id") ?? "").trim() || null;
+  const roomLevelId = String(formData.get("room_level_id") ?? "").trim() || null;
+  const classGroupId = String(formData.get("class_group_id") ?? "").trim() || null;
 
   const { error } = await supabase
     .from("users")
     .update({
-      full_name: profile.full_name,
-      phone: profile.phone || null,
-      department: profile.department || null,
-      class_level: profile.class_level || null,
-      class_number: profile.class_number || null,
-      address: profile.address || null,
-      avatar_url: profile.avatar_url || null,
+      full_name: fullName,
+      phone: phone || null,
+      address: address || null,
+      avatar_url: avatarUrl || null,
+      class_number: classNumber || null,
+      department_id: departmentId,
+      class_level_id: classLevelId,
+      room_level_id: roomLevelId,
+      class_group_id: classGroupId,
     })
     .eq("id", user.id);
 
