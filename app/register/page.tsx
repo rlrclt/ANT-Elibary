@@ -24,9 +24,9 @@ export default function RegisterPage() {
   const [userType, setUserType] = useState<"student" | "teacher" | "staff" | "external">("student");
   
   // Dropdown lists fetched from database
-  const [departments, setDepartments] = useState<string[]>([]);
-  const [classLevels, setClassLevels] = useState<string[]>([]);
-  const [roomLevels, setRoomLevels] = useState<string[]>([]);
+  const [departments, setDepartments] = useState<{ value: string; label: string }[]>([]);
+  const [classLevels, setClassLevels] = useState<{ value: string; label: string }[]>([]);
+  const [roomLevels, setRoomLevels] = useState<{ value: string; label: string }[]>([]);
 
   // Address autocomplete value for external users
   const [addressVal, setAddressVal] = useState<ThailandAddressValue>({});
@@ -35,19 +35,19 @@ export default function RegisterPage() {
     async function fetchDropdownOptions() {
       try {
         const [deptRes, classRes, roomRes] = await Promise.all([
-          supabase.from("dropdown_departments").select("name").order("name"),
-          supabase.from("dropdown_class_levels").select("name").order("name"),
-          supabase.from("dropdown_room_levels").select("name").order("name"),
+          supabase.from("dropdown_departments").select("id, name").eq("is_active", true).order("sort_order").order("name"),
+          supabase.from("dropdown_class_levels").select("id, name").eq("is_active", true).order("sort_order").order("name"),
+          supabase.from("dropdown_room_levels").select("id, name").eq("is_active", true).order("sort_order").order("name"),
         ]);
 
         if (deptRes.data) {
-          setDepartments(deptRes.data.map((d: any) => d.name));
+          setDepartments(deptRes.data.map((d: any) => ({ value: d.id, label: d.name })));
         }
         if (classRes.data) {
-          setClassLevels(classRes.data.map((c: any) => c.name));
+          setClassLevels(classRes.data.map((c: any) => ({ value: c.id, label: c.name })));
         }
         if (roomRes.data) {
-          setRoomLevels(roomRes.data.map((r: any) => r.name));
+          setRoomLevels(roomRes.data.map((r: any) => ({ value: r.id, label: r.name })));
         }
       } catch (err) {
         console.error("Failed to fetch registration dropdown items:", err);
@@ -141,7 +141,7 @@ export default function RegisterPage() {
 
               <SelectField
                 label="แผนกวิชา"
-                name="department"
+                name="department_id"
                 required
                 options={departments}
                 icon="tree-structure"
@@ -150,7 +150,7 @@ export default function RegisterPage() {
               <div className="grid grid-cols-2 gap-4">
                 <SelectField
                   label="ระดับชั้น"
-                  name="class_level"
+                  name="class_level_id"
                   required
                   options={classLevels}
                   icon="graduation-cap"
@@ -158,7 +158,7 @@ export default function RegisterPage() {
 
                 <SelectField
                   label="กลุ่มเรียน/ห้องเรียน"
-                  name="room_level"
+                  name="room_level_id"
                   required
                   options={roomLevels}
                   icon="users"
@@ -181,7 +181,7 @@ export default function RegisterPage() {
 
               <SelectField
                 label="แผนกวิชา"
-                name="department"
+                name="department_id"
                 required
                 options={departments}
                 icon="tree-structure"

@@ -29,9 +29,9 @@ export function useRegisterClient() {
 
     const userType = String(formData.get("user_type") ?? "student").trim();
     const userIdCode = String(formData.get("user_id_code") ?? "").trim();
-    const department = String(formData.get("department") ?? "").trim();
-    const classLevel = String(formData.get("class_level") ?? "").trim();
-    const roomLevel = String(formData.get("room_level") ?? "").trim();
+    const departmentId = String(formData.get("department_id") ?? "").trim();
+    const classLevelId = String(formData.get("class_level_id") ?? "").trim();
+    const roomLevelId = String(formData.get("room_level_id") ?? "").trim();
     
     // Address components for external user
     const addressDetails = String(formData.get("address_details") ?? "").trim();
@@ -65,17 +65,17 @@ export function useRegisterClient() {
         setPending(false);
         return;
       }
-      if (!department) {
+      if (!departmentId) {
         setError("กรุณาเลือกแผนกวิชา");
         setPending(false);
         return;
       }
-      if (!classLevel) {
+      if (!classLevelId) {
         setError("กรุณาเลือกระดับชั้น");
         setPending(false);
         return;
       }
-      if (!roomLevel) {
+      if (!roomLevelId) {
         setError("กรุณาเลือกกลุ่มเรียน");
         setPending(false);
         return;
@@ -86,15 +86,14 @@ export function useRegisterClient() {
         setPending(false);
         return;
       }
-      if (!department) {
+      if (!departmentId) {
         setError("กรุณาเลือกแผนกวิชา");
         setPending(false);
         return;
       }
     } else if (userType === "external") {
-      const citizenIdRegex = /^\d{13}$/;
-      if (!userIdCode || !citizenIdRegex.test(userIdCode)) {
-        setError("เลขบัตรประจำตัวประชาชนต้องเป็นตัวเลข 13 หลัก");
+      if (!userIdCode || !validateThaiCitizenId(userIdCode)) {
+        setError("เลขบัตรประจำตัวประชาชนไม่ถูกต้อง");
         setPending(false);
         return;
       }
@@ -131,9 +130,9 @@ export function useRegisterClient() {
           phone: phone || null,
           user_type: userType,
           user_id_code: userIdCode,
-          department: userType !== "external" ? department : null,
-          class_level: userType === "student" ? classLevel : null,
-          room_level: userType === "student" ? roomLevel : null,
+          department_id: userType !== "external" ? departmentId : null,
+          class_level_id: userType === "student" ? classLevelId : null,
+          room_level_id: userType === "student" ? roomLevelId : null,
           address: userType === "external" ? address : null,
         },
       },
@@ -188,4 +187,15 @@ function translateAuthError(msg: string): string {
   if (m.includes("password should be at least"))
     return "รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร";
   return msg;
+}
+
+function validateThaiCitizenId(id: string): boolean {
+  if (!/^\d{13}$/.test(id)) return false;
+  let sum = 0;
+  for (let i = 0; i < 12; i++) {
+    sum += parseInt(id.charAt(i), 10) * (13 - i);
+  }
+  const lastDigit = parseInt(id.charAt(12), 10);
+  const checkDigit = (11 - (sum % 11)) % 10;
+  return checkDigit === lastDigit;
 }

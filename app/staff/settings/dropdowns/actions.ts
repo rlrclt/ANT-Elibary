@@ -8,16 +8,19 @@ const TABLE_MAP = {
   departments: {
     dbTable: "dropdown_departments",
     userCol: "department",
+    userColId: "department_id",
     label: "แผนกวิชา",
   },
   class_levels: {
     dbTable: "dropdown_class_levels",
     userCol: "class_level",
+    userColId: "class_level_id",
     label: "ระดับชั้น",
   },
   room_levels: {
     dbTable: "dropdown_room_levels",
     userCol: "room_level",
+    userColId: "room_level_id",
     label: "ห้องเรียน",
   },
 } as const;
@@ -27,6 +30,8 @@ type TableType = keyof typeof TABLE_MAP;
 export type DropdownOption = {
   id: string;
   name: string;
+  is_active: boolean;
+  sort_order: number;
   created_at: string;
 };
 
@@ -61,7 +66,7 @@ async function verifyAdmin() {
 // ---------- 1. getDropdownOptionsAction ----------
 /**
  * ดึงข้อมูลตัวเลือกทั้งหมดจากทั้ง 3 ตาราง
- * เนื่องจากเป็นหน้าการตั้งค่า จึงดึงข้อมูลแยกสำหรับแต่ละแท็บ
+ * ดึงทั้ง active และ inactive สำหรับจัดการ
  */
 export async function getDropdownOptionsAction(): Promise<{
   departments: DropdownOption[];
@@ -86,9 +91,9 @@ export async function getDropdownOptionsAction(): Promise<{
 
   try {
     const [deptRes, classRes, roomRes] = await Promise.all([
-      supabase.from("dropdown_departments").select("id, name, created_at").order("name"),
-      supabase.from("dropdown_class_levels").select("id, name, created_at").order("name"),
-      supabase.from("dropdown_room_levels").select("id, name, created_at").order("name"),
+      supabase.from("dropdown_departments").select("id, name, is_active, sort_order, created_at").order("sort_order").order("name"),
+      supabase.from("dropdown_class_levels").select("id, name, is_active, sort_order, created_at").order("sort_order").order("name"),
+      supabase.from("dropdown_room_levels").select("id, name, is_active, sort_order, created_at").order("sort_order").order("name"),
     ]);
 
     if (deptRes.error) throw deptRes.error;
@@ -119,6 +124,7 @@ export async function getDropdownOptionsAction(): Promise<{
 export async function addDropdownOptionAction(
   table: TableType,
   name: string,
+  sortOrder: number = 0,
 ): Promise<{ success: boolean; error: string | null }> {
   const trimmedName = name.trim();
   if (!trimmedName) {
@@ -137,10 +143,11 @@ export async function addDropdownOptionAction(
 
   const { error } = await supabase.from(config.dbTable).insert({
     name: trimmedName,
+    sort_order: sortOrder,
+    is_active: true,
   });
 
   if (error) {
-    // 23505 = Unique violation ใน PostgreSQL
     if (error.code === "23505") {
       return { success: false, error: `มีตัวเลือก "${trimmedName}" นี้อยู่แล้ว` };
     }
@@ -153,17 +160,19 @@ export async function addDropdownOptionAction(
 
 // ---------- 3. updateDropdownOptionAction ----------
 /**
- * แก้ไขตัวเลือกที่มีอยู่เดิม และอัปเดตข้อมูลผู้ใช้งานที่เชื่อมโยงอยู่เพื่อความถูกต้องของข้อมูล
+ * แก้ไขตัวเลือกที่มีอยู่เดิม (ชื่อ ลำดับการจัดเรียง และสถานะใช้งาน)
  */
 export async function updateDropdownOptionAction(
   table: TableType,
   id: string,
-  newName: string,
+  name: string,
+  sortOrder: number,
+  isActive: boolean,
 ): Promise<{ success: boolean; error: string | null }> {
-  const trimmedNewName = newName.trim();
+  const trimmedNewName = name.trim();
 
   if (!trimmedNewName) {
-    return { success: false, error: "กรุณาระบุชื่อตัวเลือกใหม่" };
+    return { success: false, error: "กรุณาระบุชื่อตัวเลือก" };
   }
 
   const { error: adminError, supabase } = await verifyAdmin();
@@ -176,10 +185,10 @@ export async function updateDropdownOptionAction(
     return { success: false, error: "ตารางไม่ถูกต้อง" };
   }
 
-  // ดึงชื่อเก่าจากฐานข้อมูล เพื่อยืนยันความถูกต้องก่อนอัปเดตและป้องกัน bypass
+  // ดึงข้อมูลจริงบนเซิร์ฟเวอร์โดยใช้ ID เพื่อเช็คความปลอดภัย
   const { data: existingData, error: fetchError } = await supabase
     .from(config.dbTable)
-    .select("name")
+    .select("name, sort_order, is_active")
     .eq("id", id)
     .maybeSingle();
 
@@ -190,16 +199,15 @@ export async function updateDropdownOptionAction(
     };
   }
 
-  const oldName = existingData.name.trim();
-
-  if (trimmedNewName === oldName) {
-    return { success: true, error: null };
-  }
-
-  // 1. อัปเดตชื่อในตารางตัวเลือก
+  // ทำการอัปเดต โดย database triggers จะคอย sync ข้อมูลผู้ใช้ใน users ให้อัตโนมัติในกรณีที่มีการแก้ไขชื่อ
   const { error: updateError } = await supabase
     .from(config.dbTable)
-    .update({ name: trimmedNewName })
+    .update({
+      name: trimmedNewName,
+      sort_order: sortOrder,
+      is_active: isActive,
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", id);
 
   if (updateError) {
@@ -209,27 +217,13 @@ export async function updateDropdownOptionAction(
     return { success: false, error: updateError.message };
   }
 
-  // 2. อัปเดตข้อมูลของผู้ใช้ทั้งหมดที่เคยอ้างอิงชื่อเก่า (เพื่อรักษาสถานะข้อมูลให้ตรงกัน)
-  const { error: userUpdateError } = await supabase
-    .from("users")
-    .update({ [config.userCol]: trimmedNewName })
-    .eq(config.userCol, oldName);
-
-  if (userUpdateError) {
-    console.error(`Failed to cascade rename to users table:`, userUpdateError);
-    return {
-      success: false,
-      error: `ไม่สามารถปรับปรุงข้อมูลผู้ใช้ที่เกี่ยวข้องได้: ${userUpdateError.message}`,
-    };
-  }
-
   revalidatePath("/staff/settings/dropdowns");
   return { success: true, error: null };
 }
 
 // ---------- 4. deleteDropdownOptionAction ----------
 /**
- * ลบตัวเลือก (จะเช็คความปลอดภัยก่อนว่ามีผู้ใช้งานตัวเลือกนี้อยู่หรือไม่)
+ * ลบตัวเลือก (จะเช็คความปลอดภัยด้วย ID ผู้ใช้ foreign key ว่าถูกใช้งานอยู่หรือไม่)
  */
 export async function deleteDropdownOptionAction(
   table: TableType,
@@ -245,7 +239,7 @@ export async function deleteDropdownOptionAction(
     return { success: false, error: "ตารางไม่ถูกต้อง" };
   }
 
-  // ดึงชื่อเก่าจากฐานข้อมูล เพื่อเช็คว่ามีการใช้งานจริงหรือไม่ (หลีกเลี่ยงการเชื่อข้อมูลจาก Client)
+  // ดึงชื่อเก่าจากฐานข้อมูล เพื่อเช็คว่ามีอยู่จริง
   const { data: existingData, error: fetchError } = await supabase
     .from(config.dbTable)
     .select("name")
@@ -259,13 +253,11 @@ export async function deleteDropdownOptionAction(
     };
   }
 
-  const name = existingData.name.trim();
-
-  // เช็คว่ามีผู้ใช้งานใช้ค่านี้อยู่ในตาราง users หรือไม่
+  // เช็คว่ามีผู้ใช้งานใช้ค่านี้อยู่ในตาราง users หรือไม่ผ่าน custom UUID keys (department_id, class_level_id, room_level_id)
   const { count, error: countError } = await supabase
     .from("users")
     .select("*", { count: "exact", head: true })
-    .eq(config.userCol, name);
+    .eq(config.userColId, id);
 
   if (countError) {
     return { success: false, error: countError.message };
@@ -274,7 +266,7 @@ export async function deleteDropdownOptionAction(
   if (count && count > 0) {
     return {
       success: false,
-      error: `ไม่สามารถลบได้ เนื่องจากตัวเลือกนี้กำลังถูกใช้งานโดยผู้ใช้จำนวน ${count} คน`,
+      error: `ไม่สามารถลบได้ เนื่องจากตัวเลือกนี้กำลังถูกใช้งานโดยผู้ใช้จำนวน ${count} คน (แนะนำให้ใช้วิธีปิดสถานะการใช้งานแทน)`,
     };
   }
 

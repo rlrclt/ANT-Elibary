@@ -52,6 +52,8 @@ export function DropdownClient({
   const [roomLevels, setRoomLevels] = useState<DropdownOption[]>(initialRoomLevels);
 
   const [inputVal, setInputVal] = useState("");
+  const [sortOrderVal, setSortOrderVal] = useState<number>(0);
+  const [isActiveVal, setIsActiveVal] = useState<boolean>(true);
   const [editingOption, setEditingOption] = useState<DropdownOption | null>(null);
 
   const [pending, startTransition] = useTransition();
@@ -61,6 +63,8 @@ export function DropdownClient({
   // เมื่อเปลี่ยนแท็บ ให้ล้างค่าที่กรอกและโหมดแก้ไข
   useEffect(() => {
     setInputVal("");
+    setSortOrderVal(0);
+    setIsActiveVal(true);
     setEditingOption(null);
     setError(null);
     setSuccess(null);
@@ -110,7 +114,9 @@ export function DropdownClient({
         const res = await updateDropdownOptionAction(
           activeTab,
           editingOption.id,
-          trimmed
+          trimmed,
+          sortOrderVal,
+          isActiveVal
         );
         if (!res.success) {
           setError(res.error);
@@ -119,15 +125,19 @@ export function DropdownClient({
         showSuccessMessage(`แก้ไขข้อมูลเรียบร้อยแล้ว`);
         setEditingOption(null);
         setInputVal("");
+        setSortOrderVal(0);
+        setIsActiveVal(true);
       } else {
         // โหมดเพิ่มใหม่
-        const res = await addDropdownOptionAction(activeTab, trimmed);
+        const res = await addDropdownOptionAction(activeTab, trimmed, sortOrderVal);
         if (!res.success) {
           setError(res.error);
           return;
         }
         showSuccessMessage(`เพิ่มตัวเลือก "${trimmed}" สำเร็จแล้ว`);
         setInputVal("");
+        setSortOrderVal(0);
+        setIsActiveVal(true);
       }
       await refreshData();
     });
@@ -136,6 +146,8 @@ export function DropdownClient({
   function startEdit(option: DropdownOption) {
     setEditingOption(option);
     setInputVal(option.name);
+    setSortOrderVal(option.sort_order ?? 0);
+    setIsActiveVal(option.is_active ?? true);
     setError(null);
     setSuccess(null);
   }
@@ -143,6 +155,8 @@ export function DropdownClient({
   function cancelEdit() {
     setEditingOption(null);
     setInputVal("");
+    setSortOrderVal(0);
+    setIsActiveVal(true);
     setError(null);
   }
 
@@ -166,7 +180,31 @@ export function DropdownClient({
       if (editingOption?.id === option.id) {
         setEditingOption(null);
         setInputVal("");
+        setSortOrderVal(0);
+        setIsActiveVal(true);
       }
+      await refreshData();
+    });
+  }
+
+  function handleToggleActive(option: DropdownOption) {
+    setError(null);
+    setSuccess(null);
+    startTransition(async () => {
+      const res = await updateDropdownOptionAction(
+        activeTab,
+        option.id,
+        option.name,
+        option.sort_order,
+        !option.is_active
+      );
+      if (!res.success) {
+        setError(res.error);
+        return;
+      }
+      showSuccessMessage(
+        `เปลี่ยนสถานะ "${option.name}" เป็น${!option.is_active ? "เปิดใช้งาน" : "ปิดใช้งาน"}เรียบร้อยแล้ว`
+      );
       await refreshData();
     });
   }
@@ -295,7 +333,7 @@ export function DropdownClient({
               <div className="relative">
                 <PhosphorIcon
                   name={activeConfig.icon}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base"
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg pointer-events-none"
                 />
                 <input
                   id="optionName"
@@ -309,6 +347,50 @@ export function DropdownClient({
                 />
               </div>
             </div>
+
+            <div className="space-y-1.5">
+              <label
+                htmlFor="sortOrder"
+                className="block text-sm font-semibold text-slate-700 dark:text-slate-300"
+              >
+                ลำดับการจัดเรียง
+              </label>
+              <div className="relative">
+                <PhosphorIcon
+                  name="sort-ascending"
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg pointer-events-none"
+                />
+                <input
+                  id="sortOrder"
+                  type="number"
+                  placeholder="เช่น 0, 1, 2"
+                  value={sortOrderVal}
+                  onChange={(e) => setSortOrderVal(parseInt(e.target.value) || 0)}
+                  className="w-full pl-10 pr-4 py-2.5 text-sm bg-white dark:bg-black/20 border border-gray-200 dark:border-border-base rounded-xl outline-none focus:border-meb-green focus:ring-2 focus:ring-meb-light text-forest dark:text-slate-100 transition placeholder:text-slate-400/80"
+                  disabled={pending}
+                />
+              </div>
+              <p className="text-xs text-slate-400">ใช้สำหรับจัดเรียงรายการในหน้าลงทะเบียน (ค่าน้อยจะแสดงก่อน)</p>
+            </div>
+
+            {editingOption && (
+              <div className="flex items-center gap-2 py-1">
+                <input
+                  id="isActive"
+                  type="checkbox"
+                  checked={isActiveVal}
+                  onChange={(e) => setIsActiveVal(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-300 text-meb-green focus:ring-meb-light disabled:opacity-50"
+                  disabled={pending}
+                />
+                <label
+                  htmlFor="isActive"
+                  className="text-sm font-semibold text-slate-700 dark:text-slate-300 cursor-pointer select-none"
+                >
+                  เปิดใช้งานข้อมูลนี้
+                </label>
+              </div>
+            )}
 
             <div className="flex flex-col sm:flex-row gap-2 pt-2">
               <button
@@ -346,7 +428,7 @@ export function DropdownClient({
                 รายการข้อมูล {activeConfig.label}
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                ตัวเลือกที่เปิดใช้งานอยู่ มีจำนวนทั้งหมด {activeOptions.length} รายการ
+                รายการตัวเลือกทั้งหมด มีจำนวน {activeOptions.length} รายการ (เรียงตาม ลำดับ และ ชื่อ)
               </p>
             </div>
           </div>
@@ -364,19 +446,22 @@ export function DropdownClient({
                   <tr className="bg-slate-50/50 dark:bg-black/20 border-b border-gray-100 dark:border-border-base text-slate-500 dark:text-slate-400 font-bold">
                     <th className="px-5 py-3 w-16 text-center">#</th>
                     <th className="px-5 py-3">ชื่อตัวเลือก</th>
-                    <th className="px-5 py-3 w-48">วันที่เพิ่ม</th>
-                    <th className="px-5 py-3 w-28 text-center">จัดการ</th>
+                    <th className="px-5 py-3 w-24 text-center">ลำดับ</th>
+                    <th className="px-5 py-3 w-28 text-center">สถานะ</th>
+                    <th className="px-5 py-3 w-44">วันที่เพิ่ม</th>
+                    <th className="px-5 py-3 w-32 text-center">จัดการ</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-border-base/50">
                   {activeOptions.map((opt, idx) => {
                     const isEditingThis = editingOption?.id === opt.id;
+                    const isInactive = !opt.is_active;
                     return (
                       <tr
                         key={opt.id}
                         className={`hover:bg-slate-50/30 dark:hover:bg-white/2 transition ${
                           isEditingThis ? "bg-meb-green/5 dark:bg-meb-green/5 font-semibold" : ""
-                        }`}
+                        } ${isInactive ? "opacity-60 bg-slate-50/5 dark:bg-white/5" : ""}`}
                       >
                         <td className="px-5 py-3.5 text-center text-slate-400 font-mono">
                           {idx + 1}
@@ -384,7 +469,25 @@ export function DropdownClient({
                         <td className="px-5 py-3.5 text-forest dark:text-slate-100 font-medium">
                           {opt.name}
                         </td>
-                        <td className="px-5 py-3.5 text-xs text-slate-400 dark:text-slate-500">
+                        <td className="px-5 py-3.5 text-center font-mono text-slate-600 dark:text-slate-300">
+                          {opt.sort_order}
+                        </td>
+                        <td className="px-5 py-3.5 text-center">
+                          <button
+                            onClick={() => handleToggleActive(opt)}
+                            disabled={pending}
+                            title={opt.is_active ? "คลิกเพื่อปิดใช้งาน" : "คลิกเพื่อเปิดใช้งาน"}
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition ${
+                              opt.is_active
+                                ? "bg-meb-light text-meb-green hover:bg-meb-green/20"
+                                : "bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400"
+                            }`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${opt.is_active ? "bg-meb-green" : "bg-slate-400"}`} />
+                            {opt.is_active ? "ใช้งานอยู่" : "ปิดใช้งาน"}
+                          </button>
+                        </td>
+                        <td className="px-5 py-3.5 text-xs text-slate-400 dark:text-slate-500 font-mono">
                           {formatDate(opt.created_at)}
                         </td>
                         <td className="px-5 py-3.5">
@@ -392,7 +495,7 @@ export function DropdownClient({
                             <button
                               onClick={() => startEdit(opt)}
                               disabled={pending}
-                              title="แก้ไขชื่อ"
+                              title="แก้ไขข้อมูล"
                               className={`p-1.5 rounded-lg border transition ${
                                 isEditingThis
                                   ? "bg-meb-green text-white border-meb-green"
