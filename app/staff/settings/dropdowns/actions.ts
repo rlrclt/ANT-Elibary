@@ -23,6 +23,12 @@ const TABLE_MAP = {
     userColId: "room_level_id",
     label: "ห้องเรียน",
   },
+  class_groups: {
+    dbTable: "dropdown_class_groups",
+    userCol: "class_group",
+    userColId: "class_group_id",
+    label: "กลุ่มเรียน",
+  },
 } as const;
 
 type TableType = keyof typeof TABLE_MAP;
@@ -33,6 +39,9 @@ export type DropdownOption = {
   is_active: boolean;
   sort_order: number;
   created_at: string;
+  visible_to: string[];
+  department_id?: string;
+  class_level_id?: string;
 };
 
 // ---------- Helper: Verify Admin Role ----------
@@ -72,6 +81,7 @@ export async function getDropdownOptionsAction(): Promise<{
   departments: DropdownOption[];
   classLevels: DropdownOption[];
   roomLevels: DropdownOption[];
+  classGroups: DropdownOption[];
   error: string | null;
 }> {
   const supabase = await createClient();
@@ -85,25 +95,32 @@ export async function getDropdownOptionsAction(): Promise<{
       departments: [],
       classLevels: [],
       roomLevels: [],
+      classGroups: [],
       error: "กรุณาเข้าสู่ระบบ",
     };
   }
 
   try {
-    const [deptRes, classRes, roomRes] = await Promise.all([
-      supabase.from("dropdown_departments").select("id, name, is_active, sort_order, created_at").order("sort_order").order("name"),
-      supabase.from("dropdown_class_levels").select("id, name, is_active, sort_order, created_at").order("sort_order").order("name"),
-      supabase.from("dropdown_room_levels").select("id, name, is_active, sort_order, created_at").order("sort_order").order("name"),
+    const [deptRes, classRes, roomRes, groupRes] = await Promise.all([
+      supabase.from("dropdown_departments").select("*").order("sort_order").order("name"),
+      supabase.from("dropdown_class_levels").select("*").order("sort_order").order("name"),
+      supabase.from("dropdown_room_levels").select("*").order("sort_order").order("name"),
+      supabase.from("dropdown_class_groups").select("*").order("sort_order").order("code"),
     ]);
 
     if (deptRes.error) throw deptRes.error;
     if (classRes.error) throw classRes.error;
     if (roomRes.error) throw roomRes.error;
+    if (groupRes.error) throw groupRes.error;
 
     return {
       departments: deptRes.data || [],
       classLevels: classRes.data || [],
       roomLevels: roomRes.data || [],
+      classGroups: (groupRes.data || []).map((g: any) => ({
+        ...g,
+        name: g.code,
+      })),
       error: null,
     };
   } catch (err: any) {
@@ -112,6 +129,7 @@ export async function getDropdownOptionsAction(): Promise<{
       departments: [],
       classLevels: [],
       roomLevels: [],
+      classGroups: [],
       error: err.message || "ไม่สามารถดึงข้อมูลตัวเลือกได้",
     };
   }
@@ -125,6 +143,9 @@ export async function addDropdownOptionAction(
   table: TableType,
   name: string,
   sortOrder: number = 0,
+  visibleRoles: string[] = [],
+  departmentId?: string,
+  classLevelId?: string
 ): Promise<{ success: boolean; error: string | null }> {
   const trimmedName = name.trim();
   if (!trimmedName) {
@@ -141,11 +162,24 @@ export async function addDropdownOptionAction(
     return { success: false, error: "ตารางไม่ถูกต้อง" };
   }
 
-  const { error } = await supabase.from(config.dbTable).insert({
-    name: trimmedName,
+  const insertData: any = {
     sort_order: sortOrder,
     is_active: true,
-  });
+    visible_to: visibleRoles,
+  };
+
+  if (table === "class_groups") {
+    if (!departmentId || !classLevelId) {
+      return { success: false, error: "กรุณาเลือกแผนกวิชาและระดับชั้น" };
+    }
+    insertData.code = trimmedName;
+    insertData.department_id = departmentId;
+    insertData.class_level_id = classLevelId;
+  } else {
+    insertData.name = trimmedName;
+  }
+
+  const { error } = await supabase.from(config.dbTable).insert(insertData);
 
   if (error) {
     if (error.code === "23505") {
@@ -168,6 +202,9 @@ export async function updateDropdownOptionAction(
   name: string,
   sortOrder: number,
   isActive: boolean,
+  visibleRoles: string[] = [],
+  departmentId?: string,
+  classLevelId?: string
 ): Promise<{ success: boolean; error: string | null }> {
   const trimmedNewName = name.trim();
 
@@ -188,7 +225,7 @@ export async function updateDropdownOptionAction(
   // ดึงข้อมูลจริงบนเซิร์ฟเวอร์โดยใช้ ID เพื่อเช็คความปลอดภัย
   const { data: existingData, error: fetchError } = await supabase
     .from(config.dbTable)
-    .select("name, sort_order, is_active")
+    .select("*")
     .eq("id", id)
     .maybeSingle();
 
@@ -199,15 +236,27 @@ export async function updateDropdownOptionAction(
     };
   }
 
-  // ทำการอัปเดต โดย database triggers จะคอย sync ข้อมูลผู้ใช้ใน users ให้อัตโนมัติในกรณีที่มีการแก้ไขชื่อ
+  const updateData: any = {
+    sort_order: sortOrder,
+    is_active: isActive,
+    visible_to: visibleRoles,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (table === "class_groups") {
+    if (!departmentId || !classLevelId) {
+      return { success: false, error: "กรุณาเลือกแผนกวิชาและระดับชั้น" };
+    }
+    updateData.code = trimmedNewName;
+    updateData.department_id = departmentId;
+    updateData.class_level_id = classLevelId;
+  } else {
+    updateData.name = trimmedNewName;
+  }
+
   const { error: updateError } = await supabase
     .from(config.dbTable)
-    .update({
-      name: trimmedNewName,
-      sort_order: sortOrder,
-      is_active: isActive,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updateData)
     .eq("id", id);
 
   if (updateError) {
@@ -242,7 +291,7 @@ export async function deleteDropdownOptionAction(
   // ดึงชื่อเก่าจากฐานข้อมูล เพื่อเช็คว่ามีอยู่จริง
   const { data: existingData, error: fetchError } = await supabase
     .from(config.dbTable)
-    .select("name")
+    .select("*")
     .eq("id", id)
     .maybeSingle();
 
@@ -283,3 +332,43 @@ export async function deleteDropdownOptionAction(
   revalidatePath("/staff/settings/dropdowns");
   return { success: true, error: null };
 }
+
+// ---------- 5. reorderDropdownOptionsAction ----------
+/**
+ * Reorder dropdown options based on an array of IDs.
+ * Updates sort_order sequentially (1..n) for the given tab.
+ */
+export async function reorderDropdownOptionsAction(
+  table: TableType,
+  orderedIds: string[]
+): Promise<{ success: boolean; error: string | null }> {
+  const { error: adminError, supabase } = await verifyAdmin();
+  if (adminError || !supabase) {
+    return { success: false, error: adminError };
+  }
+
+  const config = TABLE_MAP[table];
+  if (!config) {
+    return { success: false, error: "ตารางไม่ถูกต้อง" };
+  }
+
+  try {
+    // Update sort_order for each option sequentially
+    for (let i = 0; i < orderedIds.length; i++) {
+      const { error: updateErr } = await supabase
+        .from(config.dbTable)
+        .update({ sort_order: i + 1, updated_at: new Date().toISOString() })
+        .eq("id", orderedIds[i]);
+
+      if (updateErr) {
+        return { success: false, error: updateErr.message };
+      }
+    }
+
+    revalidatePath("/staff/settings/dropdowns");
+    return { success: true, error: null };
+  } catch (err: any) {
+    return { success: false, error: err.message || "ไม่สามารถอัพเดทลำดับได้" };
+  }
+}
+

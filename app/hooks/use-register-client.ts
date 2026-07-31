@@ -32,6 +32,7 @@ export function useRegisterClient() {
     const departmentId = String(formData.get("department_id") ?? "").trim();
     const classLevelId = String(formData.get("class_level_id") ?? "").trim();
     const roomLevelId = String(formData.get("room_level_id") ?? "").trim();
+    const classGroupId = String(formData.get("class_group_id") ?? "").trim();
     
     // Address components for external user
     const addressDetails = String(formData.get("address_details") ?? "").trim();
@@ -77,6 +78,11 @@ export function useRegisterClient() {
       }
       if (!roomLevelId) {
         setError("กรุณาเลือกกลุ่มเรียน");
+        setPending(false);
+        return;
+      }
+      if (!classGroupId) {
+        setError("กรุณาเลือกรหัสกลุ่มเรียน");
         setPending(false);
         return;
       }
@@ -133,6 +139,7 @@ export function useRegisterClient() {
           department_id: userType !== "external" ? departmentId : null,
           class_level_id: userType === "student" ? classLevelId : null,
           room_level_id: userType === "student" ? roomLevelId : null,
+          class_group_id: userType === "student" ? classGroupId : null,
           address: userType === "external" ? address : null,
         },
       },

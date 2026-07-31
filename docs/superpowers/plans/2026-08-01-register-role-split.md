@@ -200,3 +200,23 @@
   Perform test registrations for each of the 4 user types and ensure data is populated in database correctly.
 - [ ] **Step 2: Verify Admin Access Control**
   Verify regular staff and members cannot access `/staff/settings/dropdowns` and are redirected, while admins can access and manage values.
+
+---
+
+### Task 7: Option Roles Visibility & Admin Filtering
+
+**Files:**
+- Modify: `supabase/migrations/015_register_role_split.sql`
+- Modify: `app/staff/settings/dropdowns/actions.ts`
+- Modify: `app/staff/settings/dropdowns/components/dropdown-client.tsx`
+- Modify: `app/register/page.tsx`
+
+- [ ] **Step 1: Update Database Schema**
+  Alter migration file to add `allowed_roles VARCHAR(20)[]` to the three dropdown tables.
+- [ ] **Step 2: Update Server Actions**
+  Update server actions to accept and persist `allowed_roles`.
+- [ ] **Step 3: Update Admin UI Form & Filter**
+  Add allowed roles checkboxes in the Add/Edit form, and add a role filter filter to only list options matching a selected role in the table.
+- [ ] **Step 4: Update Registration Filtering**
+  Filter options on the registration page client-side based on `allowed_roles` containing the user's selected `user_type`.
+

@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS public.dropdown_departments (
   name VARCHAR(100) NOT NULL,
   is_active BOOLEAN NOT NULL DEFAULT true,
   sort_order INTEGER NOT NULL DEFAULT 0,
+  visible_to TEXT[] NOT NULL DEFAULT ARRAY['student','teacher','staff','external'],
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );

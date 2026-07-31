@@ -22,11 +22,16 @@ export default function RegisterPage() {
   const supabase = createClient();
 
   const [userType, setUserType] = useState<"student" | "teacher" | "staff" | "external">("student");
-  
+
   // Dropdown lists fetched from database
   const [departments, setDepartments] = useState<{ value: string; label: string }[]>([]);
   const [classLevels, setClassLevels] = useState<{ value: string; label: string }[]>([]);
   const [roomLevels, setRoomLevels] = useState<{ value: string; label: string }[]>([]);
+  const [classGroups, setClassGroups] = useState<{ value: string; label: string; department_id: string; class_level_id: string }[]>([]);
+
+  // Selected filters for students to auto-load class groups
+  const [selectedDeptId, setSelectedDeptId] = useState("");
+  const [selectedClassLevelId, setSelectedClassLevelId] = useState("");
 
   // Address autocomplete value for external users
   const [addressVal, setAddressVal] = useState<ThailandAddressValue>({});
@@ -34,20 +39,31 @@ export default function RegisterPage() {
   useEffect(() => {
     async function fetchDropdownOptions() {
       try {
-        const [deptRes, classRes, roomRes] = await Promise.all([
+        const [deptRes, classRes, roomRes, groupRes] = await Promise.all([
           supabase.from("dropdown_departments").select("id, name").eq("is_active", true).order("sort_order").order("name"),
           supabase.from("dropdown_class_levels").select("id, name").eq("is_active", true).order("sort_order").order("name"),
           supabase.from("dropdown_room_levels").select("id, name").eq("is_active", true).order("sort_order").order("name"),
+          supabase.from("dropdown_class_groups").select("id, code, department_id, class_level_id").eq("is_active", true).order("sort_order").order("code"),
         ]);
 
         if (deptRes.data) {
           setDepartments(deptRes.data.map((d: any) => ({ value: d.id, label: d.name })));
+          if (deptRes.data.length > 0) setSelectedDeptId(deptRes.data[0].id);
         }
         if (classRes.data) {
           setClassLevels(classRes.data.map((c: any) => ({ value: c.id, label: c.name })));
+          if (classRes.data.length > 0) setSelectedClassLevelId(classRes.data[0].id);
         }
         if (roomRes.data) {
           setRoomLevels(roomRes.data.map((r: any) => ({ value: r.id, label: r.name })));
+        }
+        if (groupRes.data) {
+          setClassGroups(groupRes.data.map((g: any) => ({
+            value: g.id,
+            label: g.code,
+            department_id: g.department_id,
+            class_level_id: g.class_level_id,
+          })));
         }
       } catch (err) {
         console.error("Failed to fetch registration dropdown items:", err);
@@ -56,6 +72,10 @@ export default function RegisterPage() {
 
     fetchDropdownOptions();
   }, []);
+
+  const filteredClassGroupsForRegister = classGroups.filter(
+    (cg) => cg.department_id === selectedDeptId && cg.class_level_id === selectedClassLevelId
+  );
 
   return (
     <>
@@ -143,6 +163,8 @@ export default function RegisterPage() {
                 label="แผนกวิชา"
                 name="department_id"
                 required
+                value={selectedDeptId}
+                onChange={(e) => setSelectedDeptId(e.target.value)}
                 options={departments}
                 icon="tree-structure"
               />
@@ -152,6 +174,8 @@ export default function RegisterPage() {
                   label="ระดับชั้น"
                   name="class_level_id"
                   required
+                  value={selectedClassLevelId}
+                  onChange={(e) => setSelectedClassLevelId(e.target.value)}
                   options={classLevels}
                   icon="graduation-cap"
                 />
@@ -164,6 +188,19 @@ export default function RegisterPage() {
                   icon="users"
                 />
               </div>
+
+              <SelectField
+                label="รหัสกลุ่มเรียน"
+                name="class_group_id"
+                required
+                options={filteredClassGroupsForRegister}
+                icon="users"
+                helper={
+                  filteredClassGroupsForRegister.length === 0
+                    ? "❌ ไม่พบรหัสกลุ่มเรียนในแผนกวิชาและระดับชั้นนี้"
+                    : "เลือกรหัสกลุ่มเรียนของท่าน"
+                }
+              />
             </div>
           )}
 
