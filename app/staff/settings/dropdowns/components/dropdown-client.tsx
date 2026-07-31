@@ -25,18 +25,21 @@ const TAB_CONFIG = {
     icon: "buildings",
     placeholder: "เช่น เทคโนโลยีสารสนเทศ",
     description: "จัดการข้อมูลรายชื่อแผนกวิชา/สาขางานทั้งหมดของสถาบัน",
+    targets: ["student (นักศึกษา)", "teacher (ครู)", "staff (บุคลากร)"],
   },
   class_levels: {
     label: "ระดับชั้น",
     icon: "graduation-cap",
     placeholder: "เช่น ปวช. 1",
     description: "จัดการข้อมูลระดับชั้นการศึกษา (ปวช., ปวส., ม.ปลาย เป็นต้น)",
+    targets: ["student (นักศึกษา)"],
   },
   room_levels: {
     label: "ห้องเรียน",
     icon: "door",
     placeholder: "เช่น 121, 324",
     description: "จัดการข้อมูลห้องเรียนหรือกลุ่มเรียนสำหรับนักเรียนนักศึกษา",
+    targets: ["student (นักศึกษา)"],
   },
 } as const;
 
@@ -320,6 +323,22 @@ export function DropdownClient({
                 ? `แก้ไขชื่อรายการของข้อมูล ${activeConfig.label}`
                 : activeConfig.description}
             </p>
+            {/* แสดงป้ายบอกประเภทสมาชิกที่มีผล */}
+            <div className="mt-3 pt-2.5 border-t border-gray-100 dark:border-border-base/50 space-y-1">
+              <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">
+                กลุ่มสมาชิกที่จะเห็นตัวเลือกนี้:
+              </span>
+              <div className="flex flex-wrap gap-1">
+                {activeConfig.targets.map((role) => (
+                  <span
+                    key={role}
+                    className="text-[11px] px-2 py-0.5 rounded-full font-bold bg-meb-light text-meb-green border border-meb-green/10"
+                  >
+                    {role}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
 
           <form onSubmit={handleSave} className="space-y-4">
@@ -353,7 +372,7 @@ export function DropdownClient({
                 htmlFor="sortOrder"
                 className="block text-sm font-semibold text-slate-700 dark:text-slate-300"
               >
-                ลำดับการจัดเรียง
+                ลำดับการแสดงผล (เรียงจากน้อยไปมาก)
               </label>
               <div className="relative">
                 <PhosphorIcon
@@ -363,14 +382,14 @@ export function DropdownClient({
                 <input
                   id="sortOrder"
                   type="number"
-                  placeholder="เช่น 0, 1, 2"
+                  placeholder="เช่น 1, 2, 3"
                   value={sortOrderVal}
                   onChange={(e) => setSortOrderVal(parseInt(e.target.value) || 0)}
                   className="w-full pl-10 pr-4 py-2.5 text-sm bg-white dark:bg-black/20 border border-gray-200 dark:border-border-base rounded-xl outline-none focus:border-meb-green focus:ring-2 focus:ring-meb-light text-forest dark:text-slate-100 transition placeholder:text-slate-400/80"
                   disabled={pending}
                 />
               </div>
-              <p className="text-xs text-slate-400">ใช้สำหรับจัดเรียงรายการในหน้าลงทะเบียน (ค่าน้อยจะแสดงก่อน)</p>
+              <p className="text-xs text-slate-400">ใช้กำหนดตำแหน่งลำดับการขึ้นก่อน-หลังของตัวเลือกนี้ในหน้ารับสมัคร (ตัวอย่าง: ตั้งค่าเป็น 1 จะอยู่ด้านบนสุด ถัดมาเป็น 2, 3)</p>
             </div>
 
             {editingOption && (
