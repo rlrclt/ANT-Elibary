@@ -11,6 +11,7 @@ type StaffSidebarProps = {
   department?: string | null;
   classLevel?: string | null;
   avatarUrl?: string | null;
+  role?: string | null;
 };
 
 /**
@@ -26,6 +27,7 @@ export function StaffSidebar({
   department,
   classLevel,
   avatarUrl,
+  role,
 }: StaffSidebarProps) {
   const pathname = usePathname();
   const initials = fullName.slice(0, 2).trim();
@@ -55,6 +57,9 @@ export function StaffSidebar({
     { href: "/staff/fines", label: "ค่าปรับ + QR", icon: "currency-circle-dollar" },
     { href: "/staff/banners", label: "จัดการ Banner", icon: "image" },
     { href: "/staff/line-preview", label: "LINE Flex Message", icon: "megaphone" },
+    ...(role === "admin"
+      ? [{ href: "/staff/settings/dropdowns", label: "จัดการข้อมูลตัวเลือก", icon: "sliders" }]
+      : []),
   ];
 
   const isActive = (href: string) =>

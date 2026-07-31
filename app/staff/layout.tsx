@@ -106,6 +106,7 @@ export default async function StaffLayout({
           department={profile.department}
           classLevel={profile.class_level}
           avatarUrl={profile.avatar_url}
+          role={profile.role}
         />
         <main className="flex-1 space-y-6">{children}</main>
       </div>
