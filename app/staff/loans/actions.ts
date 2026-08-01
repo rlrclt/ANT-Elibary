@@ -59,6 +59,21 @@ export type LoanStats = {
 
 type ActionResult<T> = { data: T | null; error: string | null };
 
+// ---------- 0. hasUnresolvedDamaged ----------
+/**
+ * ตรวจว่าสมาชิกมีรายการหนังสือชำรุดที่ยังค้างชดใช้อยู่หรือไม่
+ * ถ้ามี → บล็อกการยืมเล่มใหม่จนกว่าจะจ่ายค่าปรับเต็มราคาหรือซื้อหนังสือมาคืน
+ */
+async function hasUnresolvedDamaged(userId: string): Promise<boolean> {
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from("damaged_records")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("status", "unresolved");
+  return (count ?? 0) > 0;
+}
+
 // ---------- 1. getActiveBorrowsAction ----------
 export async function getActiveBorrowsAction(filters?: {
   search?: string;
@@ -278,28 +293,39 @@ export async function borrowBookAction(
   if (!dueDate) return { error: "กรุณาระบุวันกำหนดคืน", recordId: null };
 
   // (a) หา book_copy และตรวจสถานะ available
-  let copy: { id: string; status: string } | null = null;
+  type BookCopyRow = {
+    id: string;
+    status: string;
+    books?: { status?: string } | null;
+  };
+  let copy: BookCopyRow | null = null;
   if (bookCopyId) {
     const { data, error: cErr } = await supabase
       .from("book_copies")
-      .select("id, status")
+      .select("id, status, books!book_copies_book_id_fkey ( status )")
       .eq("id", bookCopyId)
       .maybeSingle();
     if (cErr) return { error: cErr.message, recordId: null };
-    copy = data as { id: string; status: string } | null;
+    copy = data as BookCopyRow | null;
   } else {
     const { data, error: cErr } = await supabase
       .from("book_copies")
-      .select("id, status")
+      .select("id, status, books!book_copies_book_id_fkey ( status )")
       .eq("barcode", barcode)
       .maybeSingle();
     if (cErr) return { error: cErr.message, recordId: null };
-    copy = data as { id: string; status: string } | null;
+    copy = data as BookCopyRow | null;
   }
 
   if (!copy) return { error: "ไม่พบเล่มหนังสือที่ระบุ", recordId: null };
   if (copy.status !== "available")
     return { error: "เล่มนี้ไม่พร้อมยืม (สถานะปัจจุบันไม่ใช่ available)", recordId: null };
+  // บล็อกหนังสือเก่า (status='old' ของเล่มแม่) — ไม่ให้ยืม
+  if (copy.books?.status === "old")
+    return {
+      error: "หนังสือเล่มนี้เป็นหนังสือเก่า (อายุ 5 ปีขึ้นไป) ไม่สามารถยืมได้",
+      recordId: null,
+    };
 
   // (b) ตรวจสถานะสมาชิกและจำนวนยืมปัจจุบัน
   const { data: member, error: mErr } = await supabase
@@ -312,6 +338,13 @@ export async function borrowBookAction(
   if (!member) return { error: "ไม่พบข้อมูลสมาชิก", recordId: null };
   if (member.status !== "active")
     return { error: "สมาชิกไม่อยู่ในสถานะใช้งาน ไม่สามารถยืมได้", recordId: null };
+
+  // บล็อกการยืมถ้ามีหนังสือชำรุดค้างชดใช้
+  if (await hasUnresolvedDamaged(userId))
+    return {
+      error: "สมาชิกมีหนังสือชำรุดค้างชดใช้ ต้องจ่ายค่าปรับเต็มราคาหรือซื้อหนังสือมาคืนก่อน",
+      recordId: null,
+    };
 
   const { count: currentBorrows } = await supabase
     .from("borrow_records")
@@ -455,13 +488,59 @@ export async function returnBookAction(
 
   if (updErr) return { error: updErr.message };
 
-  // (c) UPDATE book_copy status → available
+  // (c) UPDATE book_copy status → available (ปกติ) หรือ damaged (ถ้าคืนชำรุด)
+  const isDamagedReturn = fineReason === "damaged";
   const { error: copyErr } = await supabase
     .from("book_copies")
-    .update({ status: "available" })
+    .update({ status: isDamagedReturn ? "damaged" : "available" })
     .eq("id", record.book_copy_id);
 
   if (copyErr) return { error: copyErr.message };
+
+  // (c2) ถ้าคืนชำรุด → สร้าง damaged_records + fine_payments (ผูก user ที่ยืม)
+  let damagedRecordId: string | null = null;
+  if (isDamagedReturn) {
+    // ดึงราคาเต็มเล่ม (จาก book_copies.price) เพื่อเป็นยอดชดใช้
+    const { data: copyPrice } = await supabase
+      .from("book_copies")
+      .select("price")
+      .eq("id", record.book_copy_id)
+      .maybeSingle();
+    const fullPrice = Number(copyPrice?.price ?? fineAmount ?? 0);
+
+    // สร้างรายการชำรุด (status=unresolved) — บล็อกการยืมของ user อัตโนมัติ
+    const { data: damagedRow, error: damagedErr } = await supabase
+      .from("damaged_records")
+      .insert({
+        book_copy_id: record.book_copy_id,
+        borrow_record_id: record.id,
+        user_id: record.user_id,
+        status: "unresolved",
+        fine_amount: fullPrice,
+        note: remark || "ตรวจพบความชำรุดตอนคืนหนังสือ",
+        handled_by: user.id,
+      })
+      .select("id")
+      .single();
+
+    if (damagedErr) return { error: damagedErr.message };
+    damagedRecordId = damagedRow?.id ?? null;
+
+    // สร้าง fine_payment (pending) ให้สมาชิกเห็นใน /member/fines และชำระผ่านสลิปได้
+    if (damagedRecordId && fullPrice > 0) {
+      const { error: payErr } = await supabase.from("fine_payments").insert({
+        user_id: record.user_id,
+        borrow_record_id: record.id,
+        damaged_record_id: damagedRecordId,
+        fine_type: "damaged",
+        amount: fullPrice,
+        description: "ค่าชดใช้หนังสือชำรุด (เต็มราคาเล่ม)",
+        payment_method: "transfer",
+        status: "pending",
+      });
+      if (payErr) return { error: payErr.message };
+    }
+  }
 
   // (d) ถ้ามีค่าปรับ → บวก fine_balance ของสมาชิก
   if (fineAmount > 0 && record.user_id) {

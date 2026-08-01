@@ -20,7 +20,8 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-thailand-address-typeahead": "^2.0.1",
-    "swiper": "^14.0.6"
+    "swiper": "^14.0.6",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

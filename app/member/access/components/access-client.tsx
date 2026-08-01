@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import { PhosphorIcon } from "../../../components/phosphor-icon";
 import { checkInAction, checkOutAction, type AccessLog } from "../actions";
 
-type ActiveLog = { id: string; check_in_at: string };
+type ActiveLog = { id: string; check_in_at: string; purpose: string; note: string | null };
 
 type AccessClientProps = {
   initialActiveLog: ActiveLog | null;
   initialHistory: AccessLog[];
+  initialPurposes: string[];
 };
 
 // ---------- Helper functions ----------
@@ -90,10 +91,15 @@ function calcDuration(checkIn: string, now: number): string {
 export function AccessClient({
   initialActiveLog,
   initialHistory,
+  initialPurposes,
 }: AccessClientProps) {
   const router = useRouter();
   const [activeLog, setActiveLog] = useState<ActiveLog | null>(initialActiveLog);
   const [history, setHistory] = useState<AccessLog[]>(initialHistory);
+  const [purposes, setPurposes] = useState<string[]>(initialPurposes);
+  const [selectedPurpose, setSelectedPurpose] = useState<string>(
+    initialPurposes[0] ?? "อ่านหนังสือ",
+  );
   const [toast, setToast] = useState<{
     type: "success" | "error";
     message: string;
@@ -121,13 +127,15 @@ export function AccessClient({
 
   // โหลดข้อมูลใหม่ (หลังเช็คอิน/เช็คเอาท์) ผ่าน server actions
   async function refreshData() {
-    const [activeRes, historyRes] = await Promise.all([
+    const [activeRes, historyRes, purposeRes] = await Promise.all([
       import("../actions").then((m) => m.getMyActiveLogAction()),
       import("../actions").then((m) => m.getMyAccessHistoryAction()),
+      import("../actions").then((m) => m.getAccessPurposesAction()),
     ]);
     if (activeRes.data) setActiveLog(activeRes.data);
     else if (!activeRes.error) setActiveLog(null);
     if (historyRes.data) setHistory(historyRes.data);
+    if (purposeRes.data && purposeRes.data.length > 0) setPurposes(purposeRes.data);
   }
 
   // --- จัดการเช็คอิน ---
@@ -135,7 +143,9 @@ export function AccessClient({
     if (isPending) return;
     setToast(null);
     try {
-      const res = await checkInAction();
+      const formData = new FormData();
+      formData.set("purpose", selectedPurpose);
+      const res = await checkInAction(formData);
       if (res.error) {
         setToast({ type: "error", message: res.error });
       } else {
@@ -176,7 +186,7 @@ export function AccessClient({
     <div className="space-y-6">
       {/* ====== ส่วนเช็คอิน/เช็คเอาท์ ====== */}
       {!activeLog ? (
-        // ไม่มี active log → ปุ่มเช็คอินใหญ่ตรงกลาง
+        // ไม่มี active log → เลือกวัตถุประสงค์ + ปุ่มเช็คอินใหญ่ตรงกลาง
         <section className="bg-white dark:bg-card-bg rounded-xl shadow-sm border border-gray-100 dark:border-border-base p-8 sm:p-12 transition-colors">
           <div className="flex flex-col items-center text-center gap-4">
             <div className="w-20 h-20 rounded-full bg-meb-light dark:bg-meb-green/15 flex items-center justify-center text-meb-green text-4xl">
@@ -187,9 +197,37 @@ export function AccessClient({
                 เช็คอินเข้าห้องสมุด
               </h2>
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                กดเพื่อบันทึกการเข้าใช้
+                เลือกว่ามาทำอะไร แล้วกดเพื่อบันทึกการเข้าใช้
               </p>
             </div>
+
+            {/* เลือกวัตถุประสงค์ */}
+            {purposes.length > 0 && (
+              <div className="w-full max-w-md mt-2">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 text-left flex items-center gap-1.5">
+                  <PhosphorIcon name="target" className="text-meb-green" />
+                  มาทำอะไร
+                </p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {purposes.map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setSelectedPurpose(p)}
+                      disabled={isPending}
+                      className={`px-4 py-2 rounded-full text-sm font-semibold border transition ${
+                        selectedPurpose === p
+                          ? "bg-meb-green text-white border-meb-green"
+                          : "bg-white dark:bg-card-bg text-slate-600 dark:text-slate-300 border-gray-200 dark:border-border-base hover:border-meb-green hover:text-meb-green"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <button
               type="button"
               onClick={handleCheckIn}
@@ -252,8 +290,14 @@ export function AccessClient({
                     วัตถุประสงค์
                   </p>
                   <p className="font-semibold text-forest dark:text-slate-100 mt-0.5">
-                    อ่านหนังสือ
+                    {activeLog.purpose || "อ่านหนังสือ"}
                   </p>
+                  {activeLog.note && (
+                    <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5 flex items-center gap-1">
+                      <PhosphorIcon name="warning" className="text-xs" />
+                      {activeLog.note}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -369,6 +413,12 @@ export function AccessClient({
                     </td>
                     <td className="py-3 pr-4 text-slate-700 dark:text-slate-200">
                       {log.purpose}
+                      {log.note && (
+                        <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+                          <PhosphorIcon name="warning" className="text-[10px]" />
+                          ระบบปิดให้
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}

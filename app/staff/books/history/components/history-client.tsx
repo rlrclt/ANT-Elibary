@@ -464,7 +464,7 @@ export function HistoryClient({ initialRecords, error: initialError }: HistoryCl
                         </p>
                       </div>
                       <span className="text-[10px] font-mono font-bold text-slate-400 bg-white dark:bg-white/5 border border-gray-200/50 dark:border-border-base px-2 py-0.5 rounded-md shrink-0">
-                        {new Date(rec.borrowed_at).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })} น.
+                        {new Date(rec.borrowed_at).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", hour12: false })} น.
                       </span>
                     </div>
                   ))

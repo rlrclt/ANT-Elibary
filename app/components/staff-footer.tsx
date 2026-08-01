@@ -7,7 +7,7 @@ import { PhosphorIcon } from "./phosphor-icon";
  */
 export function StaffFooter() {
   return (
-    <footer className="bg-white dark:bg-card-bg border-t border-gray-200 dark:border-border-base mt-auto py-6 transition-colors">
+    <footer className="bg-white dark:bg-card-bg border-t border-gray-200 dark:border-border-base mt-auto py-6 transition-colors print:hidden">
       <div className="max-w-[1200px] mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-gray-500 dark:text-slate-400">
         <p>&copy; {new Date().getFullYear()} วิทยาลัยเทคนิคอำนาจเจริญ E-Library.</p>
         <div className="flex gap-4">

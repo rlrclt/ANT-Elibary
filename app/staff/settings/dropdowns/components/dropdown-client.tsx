@@ -17,10 +17,16 @@ interface DropdownClientProps {
   initialClassLevels: DropdownOption[];
   initialRoomLevels: DropdownOption[];
   initialClassGroups: DropdownOption[];
+  initialAccessPurposes: DropdownOption[];
   initialError: string | null;
 }
 
-type TabKey = "departments" | "class_levels" | "room_levels" | "class_groups";
+type TabKey =
+  | "departments"
+  | "class_levels"
+  | "room_levels"
+  | "class_groups"
+  | "access_purposes";
 
 const TAB_CONFIG = {
   departments: {
@@ -51,6 +57,13 @@ const TAB_CONFIG = {
     description: "จัดการรหัสกลุ่มเรียน (Class Group Code) เชื่อมกับแผนกและระดับชั้น",
     targets: ["student (นักศึกษา)"],
   },
+  access_purposes: {
+    label: "วัตถุประสงค์การเข้าใช้",
+    icon: "target",
+    placeholder: "เช่น อ่านหนังสือ",
+    description: "จัดการรายการ \"มาทำอะไร\" ที่สมาชิกเลือกตอนเช็คอินเข้าห้องสมุด",
+    targets: ["student (นักศึกษา)", "teacher (ครู)", "staff (บุคลากร)", "external (บุคคลภายนอก)"],
+  },
 } as const;
 
 export function DropdownClient({
@@ -58,6 +71,7 @@ export function DropdownClient({
   initialClassLevels,
   initialRoomLevels,
   initialClassGroups,
+  initialAccessPurposes,
   initialError,
 }: DropdownClientProps) {
   const [activeTab, setActiveTab] = useState<TabKey>("departments");
@@ -65,6 +79,7 @@ export function DropdownClient({
   const [classLevels, setClassLevels] = useState<DropdownOption[]>(initialClassLevels);
   const [roomLevels, setRoomLevels] = useState<DropdownOption[]>(initialRoomLevels);
   const [classGroups, setClassGroups] = useState<DropdownOption[]>(initialClassGroups);
+  const [accessPurposes, setAccessPurposes] = useState<DropdownOption[]>(initialAccessPurposes);
 
   const [inputVal, setInputVal] = useState("");
   const [isActiveVal, setIsActiveVal] = useState<boolean>(true);
@@ -75,6 +90,8 @@ export function DropdownClient({
   const [formDeptId, setFormDeptId] = useState("");
   const [formClassLevelId, setFormClassLevelId] = useState("");
   const [formAcademicYear, setFormAcademicYear] = useState("");
+  const [formStartDate, setFormStartDate] = useState("");
+  const [formDurationYears, setFormDurationYears] = useState<number>(3);
 
   // Filter states for class_groups list
   const [filterDeptId, setFilterDeptId] = useState("");
@@ -120,15 +137,19 @@ export function DropdownClient({
     setIsActiveVal(true);
     setEditingOption(null);
     setReorderedOptions(null);
-    setSelectedRole(TAB_CONFIG[activeTab].targets[0]);
+    setSelectedRole("all");
     if (activeTab === "class_groups") {
       setFormDeptId(filterDeptId || (departments[0]?.id ?? ""));
       setFormClassLevelId(filterClassLevelId || (classLevels[0]?.id ?? ""));
       setFormAcademicYear("2569");
+      setFormStartDate("");
+      setFormDurationYears(3);
     } else {
       setFormDeptId("");
       setFormClassLevelId("");
       setFormAcademicYear("");
+      setFormStartDate("");
+      setFormDurationYears(3);
     }
     setError(null);
     setSuccess(null);
@@ -138,6 +159,7 @@ export function DropdownClient({
     if (activeTab === "departments") return departments;
     if (activeTab === "class_levels") return classLevels;
     if (activeTab === "room_levels") return roomLevels;
+    if (activeTab === "access_purposes") return accessPurposes;
     return classGroups;
   }
 
@@ -161,6 +183,7 @@ export function DropdownClient({
     setClassLevels(res.classLevels);
     setRoomLevels(res.roomLevels);
     setClassGroups(res.classGroups || []);
+    setAccessPurposes(res.accessPurposes || []);
   }
 
   // Reorder options via drag-and-drop (local only, user must click Save)
@@ -252,7 +275,7 @@ export function DropdownClient({
     }
 
     // Auto-determine visible_to from current role filter
-    const autoVisibleRoles = selectedRole ? [selectedRole] : [...activeConfig.targets];
+    const autoVisibleRoles = selectedRole === "all" ? [...activeConfig.targets] : selectedRole ? [selectedRole] : [...activeConfig.targets];
     // Auto-calculate sort_order (max + 1 of current options)
     const currentOptions = getActiveOptions();
     const maxOrder = currentOptions.reduce((max, o) => Math.max(max, o.sort_order ?? 0), 0);
@@ -274,7 +297,9 @@ export function DropdownClient({
           autoVisibleRoles,
           activeTab === "class_groups" ? formDeptId : undefined,
           activeTab === "class_groups" ? formClassLevelId : undefined,
-          activeTab === "class_groups" ? formAcademicYear : undefined
+          activeTab === "class_groups" ? formAcademicYear : undefined,
+          activeTab === "class_groups" ? formStartDate || null : undefined,
+          activeTab === "class_groups" ? formDurationYears : undefined
         );
         if (!res.success) {
           setError(res.error);
@@ -293,7 +318,9 @@ export function DropdownClient({
           autoVisibleRoles,
           activeTab === "class_groups" ? formDeptId : undefined,
           activeTab === "class_groups" ? formClassLevelId : undefined,
-          activeTab === "class_groups" ? formAcademicYear : undefined
+          activeTab === "class_groups" ? formAcademicYear : undefined,
+          activeTab === "class_groups" ? formStartDate || null : undefined,
+          activeTab === "class_groups" ? formDurationYears : undefined
         );
         if (!res.success) {
           setError(res.error);
@@ -316,6 +343,8 @@ export function DropdownClient({
       setFormDeptId(option.department_id ?? "");
       setFormClassLevelId(option.class_level_id ?? "");
       setFormAcademicYear(option.academic_year ?? "");
+      setFormStartDate(option.start_date ?? "");
+      setFormDurationYears(option.duration_years || 3);
     }
     setError(null);
     setSuccess(null);
@@ -329,6 +358,8 @@ export function DropdownClient({
       setFormDeptId(filterDeptId);
       setFormClassLevelId(filterClassLevelId);
       setFormAcademicYear("2569");
+      setFormStartDate("");
+      setFormDurationYears(3);
     }
     setError(null);
   }
@@ -392,6 +423,7 @@ export function DropdownClient({
         day: "numeric",
         hour: "2-digit",
         minute: "2-digit",
+        hour12: false,
       });
     } catch {
       return "-";
@@ -400,7 +432,7 @@ export function DropdownClient({
 
   const activeConfig = TAB_CONFIG[activeTab];
   const activeOptions = getActiveOptions();
-  let baseFiltered = selectedRole ? activeOptions.filter((opt) => opt.visible_to?.includes(selectedRole)) : activeOptions;
+  let baseFiltered = selectedRole === "all" || !selectedRole ? activeOptions : activeOptions.filter((opt) => opt.visible_to?.includes(selectedRole));
 
   if (activeTab === "class_groups") {
     if (filterDeptId) {
@@ -463,6 +495,8 @@ export function DropdownClient({
                   ? classLevels.length
                   : key === "room_levels"
                   ? roomLevels.length
+                  : key === "access_purposes"
+                  ? accessPurposes.length
                   : classGroups.length}
               </span>
             </button>
@@ -490,6 +524,7 @@ export function DropdownClient({
             onChange={(e) => { setSelectedRole(e.target.value); setReorderedOptions(null); }}
             className="px-3 py-1.5 text-sm border rounded-lg bg-white dark:bg-card-bg border-gray-200 dark:border-border-base focus:outline-none focus:ring-2 focus:ring-meb-light text-forest dark:text-slate-200"
           >
+            <option value="all">ทั้งหมด (all)</option>
             {activeConfig.targets.map((role) => (
               <option key={role} value={role}>
                 {role}
@@ -568,7 +603,7 @@ export function DropdownClient({
                   เพิ่มให้กลุ่ม:
                 </span>
                 <span className="text-[11px] px-2 py-0.5 rounded-full font-bold bg-meb-light text-meb-green border border-meb-green/10">
-                  {selectedRole}
+                  {selectedRole === "all" ? "ทั้งหมด (all)" : selectedRole}
                 </span>
               </div>
             )}
@@ -629,6 +664,43 @@ export function DropdownClient({
                     required
                     disabled={pending}
                   />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="formStartDate" className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    วันที่เริ่มนับระยะเวลานักศึกษา
+                  </label>
+                  <input
+                    id="formStartDate"
+                    type="date"
+                    value={formStartDate}
+                    onChange={(e) => setFormStartDate(e.target.value)}
+                    className="w-full px-3.5 py-2.5 text-sm bg-white dark:bg-black/20 border border-gray-200 dark:border-border-base rounded-xl outline-none focus:border-meb-green focus:ring-2 focus:ring-meb-light text-forest dark:text-slate-100 transition"
+                    disabled={pending}
+                  />
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    ใช้คำนวณวันพ้นสภาพ = วันที่เริ่มนับ + จำนวนปีหลักสูตร (ถ้าเว้นว่างจะไม่คำนวณพ้นสภาพ)
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="formDurationYears" className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    จำนวนปีของหลักสูตร <span className="text-price-red">*</span>
+                  </label>
+                  <input
+                    id="formDurationYears"
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={formDurationYears}
+                    onChange={(e) => setFormDurationYears(parseInt(e.target.value, 10) || 1)}
+                    className="w-full px-3.5 py-2.5 text-sm bg-white dark:bg-black/20 border border-gray-200 dark:border-border-base rounded-xl outline-none focus:border-meb-green focus:ring-2 focus:ring-meb-light text-forest dark:text-slate-100 transition"
+                    required
+                    disabled={pending}
+                  />
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    เช่น ปวช. = 3 ปี, ปวส. = 2 ปี
+                  </p>
                 </div>
               </>
             )}
@@ -755,6 +827,8 @@ export function DropdownClient({
                               <th className="px-5 py-3 text-[11px] uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">แผนกวิชา</th>
                               <th className="px-5 py-3 text-[11px] uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">ระดับชั้น</th>
                               <th className="px-5 py-3 text-[11px] uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">ปีการศึกษา</th>
+                              <th className="px-5 py-3 text-[11px] uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">วันเริ่มนับ</th>
+                              <th className="px-5 py-3 text-[11px] uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">ระยะเวลา</th>
                             </>
                           ) : (
                             <th className="px-5 py-3 text-[11px] uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">กลุ่มที่มองเห็น</th>
@@ -807,6 +881,12 @@ export function DropdownClient({
                                       </td>
                                       <td className="px-5 py-3.5 text-slate-600 dark:text-slate-300">
                                         {opt.academic_year || "—"}
+                                      </td>
+                                      <td className="px-5 py-3.5 text-slate-600 dark:text-slate-300">
+                                        {opt.start_date || "—"}
+                                      </td>
+                                      <td className="px-5 py-3.5 text-slate-600 dark:text-slate-300">
+                                        {opt.duration_years ? `${opt.duration_years} ปี` : "—"}
                                       </td>
                                     </>
                                   ) : (

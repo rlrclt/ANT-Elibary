@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { PhosphorIcon } from "../../../components/phosphor-icon";
+import { formatThaiDate } from "@/utils/student-expiry";
 import type { User } from "../actions";
 
 /**
  * member-table — ตารางรายการสมาชิก
- * คอลัมน์: สมาชิก, บทบาท, แผนก/ระดับ, สถานะ, ค่าปรับ, วันที่สมัคร
+ * คอลัมน์: สมาชิก, บทบาท, แผนก/ระดับ, สถานะ, ค่าปรับ, วันที่สมัคร, การจัดการ
  * คลิกแถว → onRowClick(user)
  */
 type MemberTableProps = {
@@ -86,6 +88,7 @@ export function MemberTable({ users, onRowClick }: MemberTableProps) {
               <th className="px-4 py-3 font-medium">สถานะ</th>
               <th className="px-4 py-3 font-medium text-right">ค่าปรับ</th>
               <th className="px-4 py-3 font-medium">วันที่สมัคร</th>
+              <th className="px-4 py-3 font-medium">การจัดการ</th>
             </tr>
           </thead>
           <tbody>
@@ -112,7 +115,14 @@ export function MemberTable({ users, onRowClick }: MemberTableProps) {
                       </div>
                     )}
                     <div className="min-w-0">
-                      <p className="font-bold text-forest dark:text-slate-100 truncate">
+                      <p
+                        className={`font-bold truncate ${
+                          user.expired
+                            ? "text-price-red"
+                            : "text-forest dark:text-slate-100"
+                        }`}
+                        title={user.expired ? "พ้นสภาพการเป็นนักศึกษา" : user.full_name}
+                      >
                         {user.full_name}
                       </p>
                       <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
@@ -142,14 +152,26 @@ export function MemberTable({ users, onRowClick }: MemberTableProps) {
                 </td>
                 {/* สถานะ */}
                 <td className="px-4 py-3">
-                  <span
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_BADGE[user.status]}`}
-                  >
+                  <div className="flex flex-col items-start gap-1">
                     <span
-                      className={`w-1.5 h-1.5 rounded-full ${user.status === "active" ? "bg-meb-green" : "bg-price-red"}`}
-                    />
-                    {STATUS_LABEL[user.status]}
-                  </span>
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_BADGE[user.status]}`}
+                    >
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${user.status === "active" ? "bg-meb-green" : "bg-price-red"}`}
+                      />
+                      {STATUS_LABEL[user.status]}
+                    </span>
+                    {user.expired && (
+                      <span
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-orange-50 text-orange-600 border border-orange-200"
+                        title={`พ้นสภาพจาก ${formatThaiDate(user.expiry_date)}`}
+                      >
+                        <PhosphorIcon name="warning" weight="fill" className="text-xs" />
+                        พ้นสภาพ
+                        {user.expiry_date ? ` ${formatThaiDate(user.expiry_date)}` : ""}
+                      </span>
+                    )}
+                  </div>
                 </td>
                 {/* ค่าปรับ */}
                 <td
@@ -160,6 +182,18 @@ export function MemberTable({ users, onRowClick }: MemberTableProps) {
                 {/* วันที่สมัคร */}
                 <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
                   {formatDate(user.created_at)}
+                </td>
+                {/* การจัดการ — ดูประวัติ (read-only) */}
+                <td className="px-4 py-3">
+                  <Link
+                    href={`/staff/members/${user.id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-bold text-slate-600 dark:text-slate-300 border border-gray-200 dark:border-border-base hover:border-meb-green hover:text-meb-green dark:hover:border-meb-green transition"
+                    title="ดูประวัติทั้งหมด (อ่านอย่างเดียว)"
+                  >
+                    <PhosphorIcon name="clock-counter-clockwise" weight="bold" className="text-sm" />
+                    ดูประวัติ
+                  </Link>
                 </td>
               </tr>
             ))}

@@ -16,7 +16,7 @@ export function PrintCartButton() {
   return (
     <Link
       href="/staff/books/print"
-      className="fixed bottom-6 right-6 z-50 btn-cta flex items-center gap-2 bg-terracotta hover:bg-terracotta-hover text-white font-bold px-5 py-3.5 rounded-full shadow-lg"
+      className="hidden fixed bottom-6 right-6 z-50 btn-cta flex items-center gap-2 bg-terracotta hover:bg-terracotta-hover text-white font-bold px-5 py-3.5 rounded-full shadow-lg"
     >
       <PhosphorIcon name="printer" weight="fill" className="text-xl" />
       <span>ตะกร้าพิมพ์</span>

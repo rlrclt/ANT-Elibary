@@ -7,6 +7,7 @@ import { ChangePasswordForm } from "./change-password-form";
 import { ChangeEmailForm } from "./change-email-form";
 import { ForgotPasswordModal } from "./forgot-password-modal";
 import { LineLinkSection } from "@/app/shared/components/line-link-section";
+import { formatThaiDate } from "@/utils/student-expiry";
 
 import { getDropdownOptionsAction, type DropdownOption } from "@/app/staff/settings/dropdowns/actions";
 
@@ -33,6 +34,11 @@ export type Profile = {
   class_group_id?: string;
   class_group?: string;
   gender?: string;
+  status?: "active" | "suspended";
+  suspended_reason?: string | null;
+  suspended_at?: string | null;
+  expired?: boolean;
+  expiry_date?: string | null;
 };
 
 type ProfileClientProps = {
@@ -100,6 +106,17 @@ export function ProfileClient({
         ? "เจ้าหน้าที่"
         : "นักศึกษา";
 
+  // ฟอร์แมตวันที่ dd/MM/yyyy
+  const formatDate = (iso: string | null | undefined): string => {
+    if (!iso) return "-";
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "-";
+    const dd = d.getDate().toString().padStart(2, "0");
+    const mm = (d.getMonth() + 1).toString().padStart(2, "0");
+    const yyyy = d.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  };
+
   return (
     <div className="space-y-6">
       {/* หัวหน้าโปรไลล์ — avatar + ชื่อ + รหัสสมาชิก + role badge */}
@@ -134,6 +151,50 @@ export function ProfileClient({
           </p>
         </div>
       </div>
+
+      {/* แบนเนอร์สถานะบัญชี */}
+      {initialProfile.status === "suspended" && (
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20">
+          <PhosphorIcon name="prohibit" weight="fill" className="text-price-red text-2xl shrink-0 mt-0.5" />
+          <div className="text-sm flex-1 min-w-0">
+            <p className="font-bold text-price-red">
+              บัญชีของคุณถูกระงับการใช้งาน
+            </p>
+            <p className="text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
+              คุณยังสามารถเข้าชมประวัติการใช้งานได้ แต่ไม่สามารถใช้บริการยืม คืน
+              และเช็คอินห้องสมุดได้
+            </p>
+            {initialProfile.suspended_reason && (
+              <p className="text-slate-600 dark:text-slate-300 mt-1.5">
+                เหตุผล: <span className="font-semibold">{initialProfile.suspended_reason}</span>
+              </p>
+            )}
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              วันที่ระงับ: {formatDate(initialProfile.suspended_at)}
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+              หากต้องการเปิดใช้งานบัญชีอีกครั้ง กรุณาติดต่อเจ้าหน้าที่ห้องสมุด
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* แบนเนอร์แจ้งเตือนพ้นสภาพ (เตือนเท่านั้น ไม่ระงับ) */}
+      {initialProfile.expired && initialProfile.status !== "suspended" && (
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/20">
+          <PhosphorIcon name="warning" weight="fill" className="text-orange-600 text-2xl shrink-0 mt-0.5" />
+          <div className="text-sm flex-1 min-w-0">
+            <p className="font-bold text-orange-600">
+              ครบกำหนดระยะเวลาการเป็นนักศึกษาแล้ว
+            </p>
+            <p className="text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
+              คุณพ้นสภาพการเป็นนักศึกษาตั้งแต่วันที่{" "}
+              <span className="font-semibold">{formatThaiDate(initialProfile.expiry_date)}</span>{" "}
+              กรุณาติดต่อเจ้าหน้าที่ห้องสมุดเพื่อตรวจสอบสถานะบัญชี
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Tab navigation */}
       <nav

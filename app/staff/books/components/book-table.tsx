@@ -22,12 +22,14 @@ const STATUS_BADGE: Record<string, string> = {
   active: "bg-meb-light text-meb-green",
   removed: "bg-gray-100 text-slate-500",
   lost: "bg-red-50 text-price-red",
+  old: "bg-gray-200 dark:bg-gray-700 text-slate-600 dark:text-slate-300",
 };
 
 const STATUS_LABEL: Record<string, string> = {
   active: "ใช้งาน",
   removed: "ลบแล้ว",
   lost: "สูญหาย",
+  old: "หนังสือเก่า",
 };
 
 export function BookTable({ books, onRowClick }: BookTableProps) {
@@ -90,11 +92,22 @@ export function BookTable({ books, onRowClick }: BookTableProps) {
                   </td>
                   {/* รหัส + ชื่อ */}
                   <td className="px-4 py-3 min-w-[200px]">
-                    <p className="font-bold text-meb-green dark:text-meb-green">
-                      {book.book_code}
-                    </p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="font-bold text-meb-green dark:text-meb-green">
+                        {book.book_code}
+                      </p>
+                      {book.is_old_eligible && book.status !== "old" && (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400">
+                          <PhosphorIcon name="hourglass-high" weight="fill" className="text-[10px]" />
+                          เก่า 5 ปี
+                        </span>
+                      )}
+                    </div>
                     <p className="text-forest dark:text-slate-100 truncate max-w-xs">
                       {book.title}
+                    </p>
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                      ปีพิมพ์: {book.publication_year ?? "-"}
                     </p>
                   </td>
                   {/* ผู้แต่ง */}

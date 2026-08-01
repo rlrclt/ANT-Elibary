@@ -77,8 +77,8 @@ export default async function BookDetailPage({
     .eq("id", id)
     .maybeSingle();
 
-  // ถ้าไม่พบหนังสือ → 404
-  if (!book) {
+  // ถ้าไม่พบหนังสือ หรือเป็นหนังสือเก่า/ไม่ใช้งาน → 404 (ซ่อนจากสมาชิก)
+  if (!book || book.status !== "active") {
     notFound();
   }
 

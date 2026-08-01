@@ -9,8 +9,10 @@ import {
   manualCheckOutAction,
   type AccessLogWithUser,
   type AccessStats,
+  type LibraryHour,
 } from "../actions";
 import { AccessLogTable } from "./access-log-table";
+import { LibraryHoursSettings } from "./library-hours-settings";
 
 // ฟอร์แมตระยะเวลา "X ชม. Y นาที"
 function formatDuration(min: number): string {
@@ -24,13 +26,14 @@ function formatDuration(min: number): string {
 type AccessLogClientProps = {
   initialLogs: AccessLogWithUser[];
   initialStats: AccessStats;
+  initialHours: LibraryHour[];
 };
 
 /**
  * AccessLogClient — client-side controller สำหรับ /staff/access-logs
  * จัดการ state: search/filter, refresh ข้อมูล, เช็คเอาท์แทน
  */
-export function AccessLogClient({ initialLogs, initialStats }: AccessLogClientProps) {
+export function AccessLogClient({ initialLogs, initialStats, initialHours }: AccessLogClientProps) {
   const [logs, setLogs] = useState(initialLogs);
   const [stats, setStats] = useState(initialStats);
   const [search, setSearch] = useState("");
@@ -181,6 +184,9 @@ export function AccessLogClient({ initialLogs, initialStats }: AccessLogClientPr
           {toast.msg}
         </div>
       )}
+
+      {/* เวลาเปิด-ปิดห้องสมุด */}
+      <LibraryHoursSettings initialHours={initialHours} />
 
       {/* Access log table */}
       <section className="bg-white dark:bg-card-bg rounded-xl shadow-sm border border-gray-100 dark:border-border-base p-5 transition-colors">

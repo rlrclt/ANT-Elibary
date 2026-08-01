@@ -15,6 +15,7 @@ export type AccessLogWithUser = {
   check_in_at: string;
   check_out_at: string | null;
   purpose: string;
+  note: string | null;
   user: { full_name: string; user_id_code: string } | null;
 };
 
@@ -25,7 +26,29 @@ export type AccessStats = {
   avgDurationMin: number;
 };
 
+export type LibraryHour = {
+  id: string;
+  day_of_week: number;
+  open_time: string;
+  close_time: string;
+  is_open: boolean;
+};
+
 type ActionResult<T> = { data: T | null; error: string | null };
+
+// ---------- 0. autoCloseExpiredSessions ----------
+/**
+ * ปิด session ที่เกินเวลาปิดห้องสมุด แบบ lazy (ก่อนดึงข้อมูลหน้าเพจ)
+ * ใช้ SECURITY DEFINER function เพื่อข้าม RLS — เรียกแบบ best-effort
+ */
+async function runAutoCloseSessions() {
+  const supabase = await createClient();
+  try {
+    await supabase.rpc("auto_close_expired_sessions");
+  } catch {
+    // feature ยังไม่พร้อม (ยังไม่รัน migration) → ข้ามไปเงียบ ๆ
+  }
+}
 
 // ---------- 1. getAccessLogsAction ----------
 export async function getAccessLogsAction(filters?: {
@@ -34,6 +57,9 @@ export async function getAccessLogsAction(filters?: {
   dateFrom?: string;
   dateTo?: string;
 }): Promise<ActionResult<AccessLogWithUser[]>> {
+  // ปิด session ที่เกินเวลาก่อนดึงข้อมูล
+  await runAutoCloseSessions();
+
   const supabase = await createClient();
 
   // คิวรี room_access_logs + LEFT JOIN users ผ่านความสัมพันธ์ FK
@@ -69,6 +95,7 @@ export async function getAccessLogsAction(filters?: {
     check_in_at: r.check_in_at,
     check_out_at: r.check_out_at ?? null,
     purpose: r.purpose ?? "อ่านหนังสือ",
+    note: r.note ?? null,
     user: r.users
       ? {
           full_name: r.users.full_name,
@@ -182,6 +209,84 @@ export async function manualCheckOutAction(
     .is("check_out_at", null);
 
   if (updErr) return { error: updErr.message };
+
+  revalidatePath("/staff/access-logs");
+  return { error: null };
+}
+
+// ---------- 4. getLibraryHoursAction ----------
+/**
+ * ดึงเวลาเปิด-ปิดห้องสมุดทั้ง 7 วัน (staff/admin)
+ */
+export async function getLibraryHoursAction(): Promise<
+  ActionResult<LibraryHour[]>
+> {
+  const supabase = await createClient();
+  try {
+    const { data, error } = await supabase
+      .from("library_hours")
+      .select("*")
+      .order("day_of_week", { ascending: true });
+    if (error) return { data: null, error: error.message };
+    return { data: (data ?? []) as LibraryHour[], error: null };
+  } catch (err: any) {
+    return {
+      data: null,
+      error: err?.message || "ไม่สามารถดึงเวลาเปิด-ปิดห้องสมุดได้",
+    };
+  }
+}
+
+// ---------- 5. updateLibraryHoursAction ----------
+/**
+ * อัปเดตเวลาเปิด-ปิดห้องสมุดรายวัน (staff/admin)
+ * formData: day_of_week ตัวเลข 1-7 + open_time/close_time (HH:mm) + is_open
+ */
+export async function updateLibraryHoursAction(
+  formData: FormData,
+): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "กรุณาเข้าสู่ระบบ" };
+
+  // ตรวจ role — เฉพาะ staff/admin
+  const { data: profile } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (!profile || !["staff", "admin"].includes(profile.role)) {
+    return { error: "คุณไม่มีสิทธิ์ในการดำเนินการนี้" };
+  }
+
+  const dayOfWeek = parseInt(String(formData.get("day_of_week") ?? ""), 10);
+  const openTime = String(formData.get("open_time") ?? "").trim();
+  const closeTime = String(formData.get("close_time") ?? "").trim();
+  const isOpen = formData.get("is_open") === "true" || formData.get("is_open") === "on";
+
+  if (isNaN(dayOfWeek) || dayOfWeek < 1 || dayOfWeek > 7) {
+    return { error: "ข้อมูลวันไม่ถูกต้อง" };
+  }
+  if (!/^\d{2}:\d{2}$/.test(openTime) || !/^\d{2}:\d{2}$/.test(closeTime)) {
+    return { error: "กรุณากรอกเวลาในรูปแบบ HH:mm" };
+  }
+  if (isOpen && closeTime <= openTime) {
+    return { error: "เวลาปิดต้องอยู่หลังจากเวลาเปิด" };
+  }
+
+  const { error } = await supabase
+    .from("library_hours")
+    .update({
+      open_time: openTime,
+      close_time: closeTime,
+      is_open: isOpen,
+      updated_by: user.id,
+    })
+    .eq("day_of_week", dayOfWeek);
+
+  if (error) return { error: error.message };
 
   revalidatePath("/staff/access-logs");
   return { error: null };

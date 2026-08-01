@@ -34,7 +34,7 @@ export default async function DropdownSettingsPage() {
   }
 
   // ดึงข้อมูลตัวเลือกตั้งต้น
-  const { departments, classLevels, roomLevels, classGroups, error } =
+  const { departments, classLevels, roomLevels, classGroups, accessPurposes, error } =
     await getDropdownOptionsAction();
 
   return (
@@ -43,6 +43,7 @@ export default async function DropdownSettingsPage() {
       initialClassLevels={classLevels}
       initialRoomLevels={roomLevels}
       initialClassGroups={classGroups || []}
+      initialAccessPurposes={accessPurposes || []}
       initialError={error}
     />
   );

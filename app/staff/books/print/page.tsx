@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, Suspense } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { getPrintBooksAction } from "../actions";
 import { useBarcodeCart, type PrintCartItem } from "../components/barcode-cart-context";
@@ -75,6 +75,12 @@ const PAPER_PRESETS: Record<string, { width: number; height: number; name: strin
   Custom: { width: 210, height: 297, name: "กำหนดเอง (Custom)" },
 };
 
+// ระยะห่างแนวตั้งระหว่างป้าย (mm) — ให้ตรงกับโค้ดวาด canvas
+const LABEL_GAP_Y_MM = 5;
+
+// ความละเอียดสูงสำหรับส่งออก PDF (300 DPI = มาตรฐานงานพิมพ์ คมชัด ไม่แตก)
+const EXPORT_DPI = 300;
+
 function PrintBarcodeContent() {
   const searchParams = useSearchParams();
   const paramBookId = searchParams.get("book_id");
@@ -95,23 +101,31 @@ function PrintBarcodeContent() {
   const [zoomScale, setZoomScale] = useState(100);
   const [exporting, setExporting] = useState(false);
 
-  // สั่งแปลงภาพ Canvas เป็น PDF แล้วโหลดลงเครื่อง
+  // สั่งแปลงภาพ Canvas เป็น PDF แล้วโหลดลงเครื่อง (รองรับหลายหน้า)
+  // วาดใหม่ที่ EXPORT_DPI (300 DPI) เพื่อให้ภาพใน PDF คมชัด ไม่แตกเหมือนพรีวิว 96dpi
   const handleExportPDF = async () => {
-    const canvas = canvasRef.current;
-    if (!canvas || sortedCartItems.length === 0) return;
+    if (sortedCartItems.length === 0) return;
     setExporting(true);
 
     try {
       const { jsPDF } = await import("jspdf");
-      const imgData = canvas.toDataURL("image/png");
-
       const pdf = new jsPDF({
         orientation: "portrait",
         unit: "mm",
         format: [printOptions.paperWidth, printOptions.paperHeight],
       });
 
-      pdf.addImage(imgData, "PNG", 0, 0, printOptions.paperWidth, printOptions.paperHeight);
+      for (let i = 0; i < pages.length; i++) {
+        // สร้าง canvas ใหม่แบบ offscreen ที่ความละเอียดสูง
+        const canvas = document.createElement("canvas");
+        drawPageToCanvas(canvas, i, EXPORT_DPI, EXPORT_DPI);
+        const imgData = canvas.toDataURL("image/png");
+        if (i > 0) {
+          pdf.addPage([printOptions.paperWidth, printOptions.paperHeight], "portrait");
+        }
+        pdf.addImage(imgData, "PNG", 0, 0, printOptions.paperWidth, printOptions.paperHeight);
+      }
+
       pdf.save(`barcodes-${selectedBook?.book_code || "batch"}-${new Date().toISOString().slice(0, 10)}.pdf`);
     } catch (err) {
       console.error("[pdf] export error:", err);
@@ -131,8 +145,26 @@ function PrintBarcodeContent() {
     labelHeight: 25, // mm
     marginTop: 15, // mm
     marginSide: 10, // mm
+    labelBorder: "dashed", // สไตล์ขอบป้าย: dashed | solid | none
     fontSize: 12, // px
   });
+
+  // ==========================================
+  // คำนวณพื้นที่จริงของกระดาษ — เพื่อใช้กระดาษอย่างคุ้มค่า
+  // - หาจำนวนคอลัมน์/แถวที่ใส่ได้จริง จากขนาดป้าย + ขอบ + ระยะห่าง
+  // - ใช้ค่าเดียวกันทั้งการแบ่งหน้า (pagination) และการวาด canvas
+  // - กันป้ายล้นขอบ: คอลัมน์ล้นขวา/แถวล้นล่าง จะถูกจำกัดให้พอดีกับกระดาษ
+  // ==========================================
+  const labelW = Math.max(1, printOptions.labelWidth); // mm
+  const labelH = Math.max(1, printOptions.labelHeight); // mm
+  const usableWidthMM = printOptions.paperWidth - printOptions.marginSide * 2;
+  const usableHeightMM = printOptions.paperHeight - printOptions.marginTop * 2; // ขอบบน+ล่างเท่ากัน
+  // คอลัมน์ที่ใส่ได้จริง (กันป้ายล้นขอบขวา)
+  const fitColumns = Math.max(1, Math.floor(usableWidthMM / labelW));
+  const effectiveColumns = Math.min(printOptions.columns, fitColumns);
+  // แถวที่ใส่ได้จริง (กันป้ายล้นขอบล่าง)
+  const fitRows = Math.max(1, Math.floor(usableHeightMM / (labelH + LABEL_GAP_Y_MM)));
+  const labelsPerPage = effectiveColumns * fitRows;
 
   // ระบบจัดกลุ่มและเรียงลำดับบาร์โค้ดฉลาด (Smart Auto-Categorize & Grouping)
   // เรียงตาม: 1. หมวดหมู่ (Category) -> 2. รหัสหนังสือแม่ (BookCode) -> 3. เลขบาร์โค้ด (Barcode)
@@ -149,8 +181,6 @@ function PrintBarcodeContent() {
       return a.barcode.localeCompare(b.barcode, "th", { numeric: true });
     });
   }, [cartItems]);
-
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // โหลดข้อมูลจาก Supabase
   useEffect(() => {
@@ -234,78 +264,84 @@ function PrintBarcodeContent() {
   const resetZoom = () => setZoomScale(100);
 
   // ==========================================
-  // CANVAS DRAWING LOGIC (จำลองกระดาษและการพิมพ์)
+  // วาด 1 แผ่นกระดาษลง canvas — ใช้ได้ทั้งพรีวิว (96dpi x retina) และส่งออก PDF (300dpi)
+  // @param renderDpi  ความละเอียด pixel ของ canvas (backing store)
+  // @param displayDpi ความละเอียดที่ใช้ตั้ง CSS ขนาดบนจอ (พรีวิวใช้ 96)
   // ==========================================
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  function drawPageToCanvas(
+    canvas: HTMLCanvasElement,
+    pageIndex: number,
+    renderDpi: number,
+    displayDpi: number = renderDpi,
+  ) {
+    const MM_TO_PX = renderDpi / 25.4;
+    // ค่า px ที่เป็น "จุด" เช่น ขอบ/ระยะ/ฟอนต์ ต้องขยายตาม DPI ด้วย (ตอน 300dpi จะได้คม ไม่เล็กลง)
+    const pxScale = renderDpi / 96;
+
+    const paperWidthPx = printOptions.paperWidth * MM_TO_PX;
+    const paperHeightPx = printOptions.paperHeight * MM_TO_PX;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // คำนวณ DPI 96 (MM_TO_PX)
-    const DPI = 96;
-    const MM_TO_PX = DPI / 25.4;
+    // ขนาด backing store ตาม renderDpi + ขนาด CSS ตาม displayDpi
+    canvas.width = paperWidthPx;
+    canvas.height = paperHeightPx;
+    const displayMM_TO_PX = displayDpi / 25.4;
+    canvas.style.width = `${printOptions.paperWidth * displayMM_TO_PX}px`;
+    canvas.style.height = `${printOptions.paperHeight * displayMM_TO_PX}px`;
 
-    // ขนาดกระดาษเป็น Pixel ตามค่าความกว้างxยาวที่เลือก
-    const paperWidthPx = printOptions.paperWidth * MM_TO_PX;
-    const paperHeightPx = printOptions.paperHeight * MM_TO_PX;
-
-    // ตั้งค่าความละเอียด Canvas (Retina display support)
-    const scale = window.devicePixelRatio || 1;
-    canvas.width = paperWidthPx * scale;
-    canvas.height = paperHeightPx * scale;
-
-    // กำหนด CSS ให้ canvas มีขนาดเท่ากระดาษจริง
-    canvas.style.width = `${paperWidthPx}px`;
-    canvas.style.height = `${paperHeightPx}px`;
-
-    ctx.scale(scale, scale);
-
-    // เคลียร์พื้นหลังกระดาษให้เป็นสีขาว
+    // เคลียร์พื้นหลังกระดาษให้เป็นสีขาว + กรอบขอบกระดาษบางๆ
     ctx.fillStyle = "#FFFFFF";
     ctx.fillRect(0, 0, paperWidthPx, paperHeightPx);
-
-    // วาด Grid หรือ Guide เผื่อให้เห็นขอบกระดาษบางๆ
     ctx.strokeStyle = "#cbd5e1";
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 1 * pxScale;
     ctx.strokeRect(0, 0, paperWidthPx, paperHeightPx);
 
-    // แปลงค่า Margin เป็น Px
     const marginTopPx = printOptions.marginTop * MM_TO_PX;
     const marginSidePx = printOptions.marginSide * MM_TO_PX;
     const labelWidthPx = printOptions.labelWidth * MM_TO_PX;
     const labelHeightPx = printOptions.labelHeight * MM_TO_PX;
 
-    // คำนวณระยะห่างระหว่างคอลัมน์
-    const totalLabelWidth = printOptions.columns * labelWidthPx;
+    // คำนวณระยะห่างระหว่างคอลัมน์ (ใช้คอลัมน์ที่ใส่ได้จริง — ไม่เกินพื้นที่กระดาษ)
+    const totalLabelWidth = effectiveColumns * labelWidthPx;
     const availableSpace = paperWidthPx - marginSidePx * 2 - totalLabelWidth;
     const gapX =
-      printOptions.columns > 1 ? Math.max(0, availableSpace / (printOptions.columns - 1)) : 0;
-    const gapY = 5 * MM_TO_PX; // ระยะห่างแนวตั้ง (mm)
+      effectiveColumns > 1 ? Math.max(0, availableSpace / (effectiveColumns - 1)) : 0;
+    const gapY = LABEL_GAP_Y_MM * MM_TO_PX; // ระยะห่างแนวตั้ง (mm)
 
-    // เริ่มวาด Barcode ทั้งหมดจากคิวสะสมลงบน Canvas (จัดกลุ่มตามหมวดหมู่และเล่มแม่)
     let col = 0;
     let row = 0;
 
-    sortedCartItems.forEach((item) => {
+    const pageItems = sortedCartItems.slice(
+      pageIndex * labelsPerPage,
+      (pageIndex + 1) * labelsPerPage,
+    );
+
+    pageItems.forEach((item) => {
       const barcode = item.barcode;
       const x = marginSidePx + col * (labelWidthPx + gapX);
       const y = marginTopPx + row * (labelHeightPx + gapY);
 
-      // 1. วาดกรอบ Label (สติกเกอร์)
-      ctx.strokeStyle = "#cbd5e1";
-      ctx.setLineDash([4, 4]); // เส้นประ
-      ctx.lineWidth = 1;
-      ctx.strokeRect(x, y, labelWidthPx, labelHeightPx);
-      ctx.setLineDash([]); // คืนค่าเส้นทึบ
+      // 1. วาดกรอบ Label (สติกเกอร์) — ตามตัวเลือกขอบป้าย (dashed / solid / none)
+      if (printOptions.labelBorder !== "none") {
+        ctx.strokeStyle = "#cbd5e1";
+        if (printOptions.labelBorder === "solid") {
+          ctx.setLineDash([]); // เส้นทึบ
+        } else {
+          ctx.setLineDash([4 * pxScale, 4 * pxScale]); // เส้นประ
+        }
+        ctx.lineWidth = 1 * pxScale;
+        ctx.strokeRect(x, y, labelWidthPx, labelHeightPx);
+        ctx.setLineDash([]); // คืนค่าเส้นทึบ
+      }
 
       // 2. จำลองการวาดเส้น Barcode
       ctx.fillStyle = "#000000";
-      const barcodeMargin = 10;
+      const barcodeMargin = 10 * pxScale;
       const barcodeWidth = labelWidthPx - barcodeMargin * 2;
       const barcodeHeight = labelHeightPx * 0.5;
       const startX = x + barcodeMargin;
-      const startY = y + 10;
+      const startY = y + 16 * pxScale;
 
       let seed = 0;
       for (let i = 0; i < barcode.length; i++) {
@@ -317,8 +353,8 @@ function PrintBarcodeContent() {
         seed = (seed * 9301 + 49297) % 233280;
         const rand = seed / 233280;
 
-        const lineWidth = rand > 0.5 ? 2 : 4;
-        const spacing = rand > 0.5 ? 2 : 5;
+        const lineWidth = (rand > 0.5 ? 2 : 4) * pxScale;
+        const spacing = (rand > 0.5 ? 2 : 5) * pxScale;
         if (currentX + lineWidth <= startX + barcodeWidth) {
           ctx.fillRect(currentX, startY, lineWidth, barcodeHeight);
         }
@@ -326,32 +362,49 @@ function PrintBarcodeContent() {
       }
 
       // 3. พิมพ์ตัวอักษร Barcode ด้านล่าง
-      ctx.font = `bold ${printOptions.fontSize}px sans-serif`;
+      ctx.font = `bold ${printOptions.fontSize * pxScale}px sans-serif`;
       ctx.fillStyle = "#1e293b";
       ctx.textAlign = "center";
-      ctx.fillText(barcode, x + labelWidthPx / 2, startY + barcodeHeight + 15);
+      ctx.fillText(barcode, x + labelWidthPx / 2, startY + barcodeHeight + 12 * pxScale);
 
-      // 4. พิมพ์ชื่อวิทยาลัย
-      ctx.font = `normal 10px sans-serif`;
+      // 4. พิมพ์ชื่อวิทยาลัย (ให้ห่างเส้นขอบบนพอสมควร ไม่ทับเส้น)
+      ctx.font = `normal ${10 * pxScale}px sans-serif`;
       ctx.fillStyle = "#64748b";
       ctx.fillText(
         "วิทยาลัยเทคนิคอำนาจเจริญ",
         x + labelWidthPx / 2,
-        startY - 3
+        startY - 4 * pxScale
       );
 
-      // จัดการลำดับคอลัมน์และแถว
+      // จัดการลำดับคอลัมน์และแถว (ใช้คอลัมน์ที่ใส่ได้จริง)
       col++;
-      if (col >= printOptions.columns) {
+      if (col >= effectiveColumns) {
         col = 0;
         row++;
       }
     });
-  }, [sortedCartItems, printOptions]);
+  }
+
+  // วาดพรีวิวลง canvas ทุกแผ่น (96dpi x retina — ชัดบนจอ ไม่เปลือง memory)
+  useEffect(() => {
+    const displayDpi = 96 * (window.devicePixelRatio || 1);
+    const canvases = document.querySelectorAll(".print-page-canvas");
+    canvases.forEach((canvasEl, pageIndex) => {
+      drawPageToCanvas(canvasEl as HTMLCanvasElement, pageIndex, displayDpi, 96);
+    });
+  }, [sortedCartItems, printOptions, labelsPerPage, effectiveColumns, fitRows]);
 
   // คำนวณจำนวนแผ่นกระดาษที่คาดว่าจะใช้
-  const labelsPerPage = printOptions.columns * 7;
   const estimatedPages = Math.max(1, Math.ceil(sortedCartItems.length / labelsPerPage));
+
+  // แบ่งข้อมูลสำหรับแต่ละหน้ากระดาษ
+  const pages = [];
+  for (let i = 0; i < sortedCartItems.length; i += labelsPerPage) {
+    pages.push(sortedCartItems.slice(i, i + labelsPerPage));
+  }
+  if (pages.length === 0) {
+    pages.push([]);
+  }
 
   return (
     <main className="min-h-screen bg-[#F8FAFC] font-sans text-slate-800 flex flex-col">
@@ -400,7 +453,7 @@ function PrintBarcodeContent() {
           <button
             onClick={() => window.print()}
             disabled={cartItems.length === 0}
-            className="bg-[#5B2B92] hover:bg-[#461E75] text-white px-6 py-2.5 rounded-lg font-bold shadow-md shadow-[#5B2B92]/20 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="hidden bg-[#5B2B92] hover:bg-[#461E75] text-white px-6 py-2.5 rounded-lg font-bold shadow-md shadow-[#5B2B92]/20 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Icons.Printer className="w-5 h-5" />
             สั่งพิมพ์รวม ({cartItems.length})
@@ -787,6 +840,24 @@ function PrintBarcodeContent() {
               </fieldset>
 
               <fieldset className="grid grid-cols-2 gap-2">
+                <div className="col-span-2">
+                  <label className="text-[10px] font-bold text-slate-500 block mb-1">
+                    ขอบป้าย (เส้นกรอบ) — ใช้กับทั้งพรีวิวและไฟล์ PDF
+                  </label>
+                  <select
+                    name="labelBorder"
+                    value={printOptions.labelBorder}
+                    onChange={handleOptionChange}
+                    className="w-full text-xs border border-slate-200 rounded-lg p-1.5 cursor-pointer bg-white outline-none"
+                  >
+                    <option value="dashed">เส้นประ</option>
+                    <option value="solid">เส้นทึบ</option>
+                    <option value="none">ไม่มีเส้น</option>
+                  </select>
+                </div>
+              </fieldset>
+
+              <fieldset className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-[10px] font-bold text-slate-500 block mb-1">
                     ขอบบน (mm)
@@ -821,13 +892,23 @@ function PrintBarcodeContent() {
         {/* ========================================== */}
         <section
           id="printable-canvas-container"
-          className="lg:col-span-2 flex flex-col bg-slate-200/50 rounded-xl border border-slate-200 overflow-hidden relative print:block print:w-full print:bg-white print:border-none print:m-0 print:p-0"
+          className="lg:col-span-2 flex flex-col bg-slate-200/50 rounded-xl border border-slate-200 overflow-hidden relative print:block print:static print:w-full print:h-auto print:bg-white print:border-none print:m-0 print:p-0 print:overflow-visible print:shadow-none"
         >
           {/* Header แผงควบคุม Zoom */}
           <div className="p-3 bg-white border-b border-slate-200 flex justify-between items-center print:hidden shadow-sm z-10">
-            <h2 className="text-xs font-bold text-slate-900">
-              พรีวิวกระดาษ ({printOptions.paperWidth}x{printOptions.paperHeight} mm) — แสดง {cartItems.length} ดวง
-            </h2>
+            <div>
+              <h2 className="text-xs font-bold text-slate-900">
+                พรีวิวกระดาษ ({printOptions.paperWidth}x{printOptions.paperHeight} mm) — แสดง {cartItems.length} ดวง
+              </h2>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                พื้นที่ต่อแผ่น: {effectiveColumns} คอลัมน์ x {fitRows} แถว = {labelsPerPage} ดวง/แผ่น
+                {effectiveColumns < printOptions.columns && (
+                  <span className="text-amber-600 font-bold ml-1">
+                    ⚠ เลือก {printOptions.columns} คอลัมน์ แต่กว้างป้ายเกินพื้นที่ ใช้ได้จริง {effectiveColumns} คอลัมน์
+                  </span>
+                )}
+              </p>
+            </div>
 
             {/* ปุ่ม Zoom Controls */}
             <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
@@ -860,14 +941,16 @@ function PrintBarcodeContent() {
 
           <div className="flex-1 overflow-auto p-4 md:p-8 flex justify-center items-start print:p-0 print:overflow-visible">
             <figure
-              className="bg-white shadow-xl print:shadow-none transition-transform duration-150 origin-top flex items-center justify-center"
+              className="bg-white shadow-xl print:shadow-none transition-transform duration-150 origin-top flex flex-col items-center gap-4 print:gap-0"
               style={{ transform: `scale(${zoomScale / 100})` }}
             >
-              {/* Canvas Rendering Area */}
-              <canvas
-                ref={canvasRef}
-                className="block print:w-full print:h-auto"
-              ></canvas>
+              {/* Canvas Rendering Area — 1 Canvas ต่อ 1 แผ่นกระดาษ */}
+              {pages.map((_, pageIndex) => (
+                <canvas
+                  key={pageIndex}
+                  className="print-page-canvas block print:w-full print:h-auto"
+                />
+              ))}
             </figure>
           </div>
         </section>
@@ -882,6 +965,11 @@ function PrintBarcodeContent() {
             size: ${printOptions.paperWidth}mm ${printOptions.paperHeight}mm;
             margin: 0;
           }
+          html,
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
+          }
           body * {
             visibility: hidden !important;
           }
@@ -890,16 +978,14 @@ function PrintBarcodeContent() {
             visibility: visible !important;
           }
           #printable-canvas-container {
-            position: fixed !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: ${printOptions.paperWidth}mm !important;
-            height: ${printOptions.paperHeight}mm !important;
+            width: 100% !important;
+            height: auto !important;
             margin: 0 !important;
             padding: 0 !important;
             background: white !important;
             border: none !important;
             box-shadow: none !important;
+            overflow: visible !important;
             z-index: 99999 !important;
           }
           #printable-canvas-container figure {
@@ -907,14 +993,20 @@ function PrintBarcodeContent() {
             margin: 0 !important;
             padding: 0 !important;
             transform: none !important;
+            gap: 0 !important;
             width: ${printOptions.paperWidth}mm !important;
-            height: ${printOptions.paperHeight}mm !important;
           }
-          #printable-canvas-container canvas {
+          .print-page-canvas {
             display: block !important;
             width: ${printOptions.paperWidth}mm !important;
             height: ${printOptions.paperHeight}mm !important;
             max-width: none !important;
+            page-break-after: always;
+            break-after: page;
+          }
+          .print-page-canvas:last-child {
+            page-break-after: auto;
+            break-after: auto;
           }
         }
       `,

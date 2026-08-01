@@ -56,6 +56,11 @@ export function BooksClient({
   const [drawerBook, setDrawerBook] = useState<BookWithCategory | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  // จำนวนหนังสือที่ครบเกณฑ์ 5 ปี แต่ยังไม่ได้ย้ายเป็นหนังสือเก่า (คำนวณจากรายการเริ่มต้นเต็มชุด)
+  const oldEligibleCount = initialBooks.filter(
+    (b) => b.is_old_eligible && b.status !== "old",
+  ).length;
+
   function handleSearch() {
     startTransition(async () => {
       const result = await getBooksAction({
@@ -198,6 +203,32 @@ export function BooksClient({
           </button>
         </div>
       </section>
+
+      {/* แจ้งเตือนหนังสือครบ 5 ปี — กดปุ่มไปที่หน้าจัดการหนังสือเก่า */}
+      {oldEligibleCount > 0 && (
+        <section className="bg-orange-50 dark:bg-orange-500/10 rounded-xl border border-orange-200 dark:border-orange-500/30 p-4 flex flex-col sm:flex-row sm:items-center gap-3 transition-colors">
+          <div className="flex items-center gap-2.5 flex-1">
+            <span className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 shrink-0">
+              <PhosphorIcon name="hourglass-high" weight="fill" className="text-lg" />
+            </span>
+            <div>
+              <p className="text-sm font-bold text-orange-700 dark:text-orange-300">
+                มีหนังสือที่ครบกำหนด 5 ปี จำนวน {oldEligibleCount} เล่ม
+              </p>
+              <p className="text-xs text-orange-600/80 dark:text-orange-400/80">
+                หนังสือเหล่านี้จะถูกซ่อนจากสมาชิกและไม่ให้ยืมหลังแอดมินย้ายเป็น "หนังสือเก่า"
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/staff/books/old"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-white bg-orange-500 hover:bg-orange-600 rounded-md transition shrink-0"
+          >
+            <PhosphorIcon name="hourglass-high" weight="bold" />
+            จัดการหนังสือเก่า
+          </Link>
+        </section>
+      )}
 
       {/* Stat cards */}
       <BookStatCards stats={stats} />

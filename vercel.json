@@ -3,6 +3,10 @@
     {
       "path": "/api/line/dispatch",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/access/auto-checkout",
+      "schedule": "*/30 * * * *"
     }
   ]
 }

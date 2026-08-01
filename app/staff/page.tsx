@@ -1,5 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
+import { getOldCutoffYear } from "@/utils/book-age";
 import { PhosphorIcon } from "../components/phosphor-icon";
+import { PrintButton } from "../components/print-button";
 
 export const metadata = {
   title: "แดชบอร์ดเจ้าหน้าที่",
@@ -14,13 +16,19 @@ export default async function StaffDashboardPage() {
   const supabase = await createClient();
 
   // ดึงสถิติจริง (ใช้ head: true เพื่อดึงแค่ count, ไม่ต้องดึงข้อมูลทั้งหมด)
+  const newBooksCutoff = getOldCutoffYear();
   const [
     { count: booksCount },
+    { count: newBooksCount },
     { count: membersCount },
     { count: activeLoans },
     { count: currentlyInside },
   ] = await Promise.all([
     supabase.from("books").select("*", { count: "exact", head: true }),
+    supabase
+      .from("books")
+      .select("*", { count: "exact", head: true })
+      .or(`publication_year.gt.${newBooksCutoff},publication_year.is.null`),
     supabase
       .from("users")
       .select("*", { count: "exact", head: true })
@@ -41,6 +49,12 @@ export default async function StaffDashboardPage() {
       value: booksCount ?? 0,
       icon: "books",
       color: "bg-meb-light text-meb-green",
+    },
+    {
+      label: "หนังสือใหม่ (ต่ำกว่า 5 ปี)",
+      value: newBooksCount ?? 0,
+      icon: "sparkle",
+      color: "bg-purple-50 text-purple-600",
     },
     {
       label: "สมาชิกทั้งหมด",
@@ -92,7 +106,7 @@ export default async function StaffDashboardPage() {
   return (
     <>
       {/* Welcome banner — clone สไตล์จาก AmnatCharoen.html */}
-      <section className="bg-gradient-to-r from-meb-green to-[#007f3d] rounded-xl shadow-sm p-6 text-white relative overflow-hidden">
+      <section className="bg-gradient-to-r from-meb-green to-[#007f3d] rounded-xl shadow-sm p-6 text-white relative overflow-hidden print:hidden">
         <div className="absolute -right-10 -top-10 w-48 h-48 bg-white opacity-10 rounded-full blur-2xl" />
         <div className="relative z-10">
           <p className="text-meb-light text-sm mb-1">สวัสดีเจ้าหน้าที่,</p>
@@ -103,10 +117,13 @@ export default async function StaffDashboardPage() {
             <PhosphorIcon name="shield-check" weight="fill" /> ระบบห้องสมุดดิจิทัล วิทยาลัยเทคนิคอำนาจเจริญ
           </p>
         </div>
+        <div className="absolute top-5 right-5 z-10 print:hidden">
+          <PrintButton className="bg-white/20 text-white hover:bg-white/30 border border-white/30" />
+        </div>
       </section>
 
       {/* Stats grid */}
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <section className="grid grid-cols-2 lg:grid-cols-5 gap-4 print:grid-cols-3 print:shadow-none">
         {stats.map((s) => (
           <div
             key={s.label}
@@ -130,7 +147,7 @@ export default async function StaffDashboardPage() {
       </section>
 
       {/* Quick actions */}
-      <section className="bg-white dark:bg-card-bg rounded-xl shadow-sm border border-gray-100 dark:border-border-base p-5 transition-colors">
+      <section className="bg-white dark:bg-card-bg rounded-xl shadow-sm border border-gray-100 dark:border-border-base p-5 transition-colors print:hidden">
         <div className="flex items-center gap-2 mb-5">
           <div className="w-1.5 h-5 bg-meb-green rounded-full" />
           <h2 className="text-lg font-bold text-forest dark:text-slate-100">เมนูเร็ว</h2>

@@ -7,9 +7,14 @@ import {
   getBookCopiesAction,
   updateBookCopyStatusAction,
   updateBookAction,
+  getCopyTimelineAction,
+  createDamagedRecordAction,
+  searchMemberAction,
+  deleteBookCopyAction,
   type BookWithCategory,
   type BookCopy,
   type Category,
+  type CopyTimelineEvent,
 } from "../actions";
 
 /**
@@ -64,6 +69,25 @@ export function BookCopiesDrawer({ open, onClose, book, categories = [] }: BookC
   const [editError, setEditError] = useState<string | null>(null);
   const [coverUrl, setCoverUrl] = useState("");
   const [uploading, setUploading] = useState(false);
+
+  // Timeline ของเล่มลูก
+  const [timelineCopy, setTimelineCopy] = useState<BookCopy | null>(null);
+  const [timelineEvents, setTimelineEvents] = useState<CopyTimelineEvent[]>([]);
+  const [timelineLoading, setTimelineLoading] = useState(false);
+
+  // ฟอร์มแจ้งชำรุด
+  const [damagedCopy, setDamagedCopy] = useState<BookCopy | null>(null);
+  const [damagedUserId, setDamagedUserId] = useState("");
+  const [damagedQuery, setDamagedQuery] = useState("");
+  const [damagedResults, setDamagedResults] = useState<
+    { id: string; full_name: string; user_id_code: string; status: string }[]
+  >([]);
+  const [damagedSearching, setDamagedSearching] = useState(false);
+  const [damagedError, setDamagedError] = useState<string | null>(null);
+
+  // ฟอร์มลบเล่มลูก
+  const [deleteCopy, setDeleteCopy] = useState<BookCopy | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // โหลดเล่มลูกเมื่อเปิด drawer พร้อมมี book
   // ล็อก scroll พื้นหลังเมื่อเปิด drawer
@@ -184,6 +208,83 @@ export function BookCopiesDrawer({ open, onClose, book, categories = [] }: BookC
     });
   }
 
+  // เปิด modal ดู timeline ของเล่มลูก
+  async function openTimeline(copy: BookCopy) {
+    setTimelineCopy(copy);
+    setTimelineEvents([]);
+    setTimelineLoading(true);
+    const res = await getCopyTimelineAction(copy.id);
+    setTimelineEvents(res.data ?? []);
+    setTimelineLoading(false);
+  }
+
+  // ค้นหาสมาชิกสำหรับแจ้งชำรุด
+  async function handleDamagedSearch(q: string) {
+    setDamagedQuery(q);
+    if (!q.trim()) {
+      setDamagedResults([]);
+      return;
+    }
+    setDamagedSearching(true);
+    const res = await searchMemberAction(q);
+    setDamagedResults(res.data ?? []);
+    setDamagedSearching(false);
+  }
+
+  // submit แจ้งชำรุด
+  function handleCreateDamaged(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!damagedCopy) return;
+    if (!damagedUserId) {
+      setDamagedError("กรุณาเลือกสมาชิกผู้รับผิดชอบ");
+      return;
+    }
+    setDamagedError(null);
+    const formData = new FormData(e.currentTarget);
+    formData.set("copy_id", damagedCopy.id);
+    formData.set("user_id", damagedUserId);
+    startTransition(async () => {
+      const res = await createDamagedRecordAction(formData);
+      if (res.error) {
+        setDamagedError(res.error);
+        return;
+      }
+      // refresh รายการ + ปิด modal
+      if (book) {
+        const fresh = await getBookCopiesAction(book.id);
+        if (!fresh.error) setCopies(fresh.data ?? []);
+      }
+      setDamagedCopy(null);
+      setDamagedUserId("");
+      setDamagedQuery("");
+      setDamagedResults([]);
+      setDamagedError(null);
+    });
+  }
+
+  // submit ลบเล่มลูก (soft-delete — ประวัติยังคงอยู่)
+  function handleDeleteCopy(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!deleteCopy) return;
+    setDeleteError(null);
+    const formData = new FormData(e.currentTarget);
+    formData.set("copy_id", deleteCopy.id);
+    startTransition(async () => {
+      const res = await deleteBookCopyAction(formData);
+      if (res.error) {
+        setDeleteError(res.error);
+        return;
+      }
+      // refresh รายการ + ปิด modal
+      if (book) {
+        const fresh = await getBookCopiesAction(book.id);
+        if (!fresh.error) setCopies(fresh.data ?? []);
+      }
+      setDeleteCopy(null);
+      setDeleteError(null);
+    });
+  }
+
   return (
     <>
       {/* Backdrop มืดๆ */}
@@ -196,9 +297,8 @@ export function BookCopiesDrawer({ open, onClose, book, categories = [] }: BookC
 
       {/* Bottom sheet — สไลด์ขึ้นจากล่างเต็มจอ */}
       <aside
-        className={`fixed bottom-0 left-0 right-0 z-[95] h-full bg-white dark:bg-card-bg shadow-2xl rounded-t-2xl border-t border-gray-100 dark:border-border-base transition-transform duration-300 flex flex-col ${
-          open ? "translate-y-0" : "translate-y-full"
-        }`}
+        className={`fixed bottom-0 left-0 right-0 z-[95] h-full bg-white dark:bg-card-bg shadow-2xl rounded-t-2xl border-t border-gray-100 dark:border-border-base transition-transform duration-300 flex flex-col ${open ? "translate-y-0" : "translate-y-full"
+          }`}
         aria-hidden={!open}
       >
         {/* Drag handle — แถบสีเทาด้านบน */}
@@ -225,6 +325,7 @@ export function BookCopiesDrawer({ open, onClose, book, categories = [] }: BookC
                     <PhosphorIcon name="pencil-simple" weight="bold" className="text-sm" />
                     {editMode ? "ยกเลิกแก้ไข" : "แก้ไขข้อมูลหนังสือ"}
                   </button>
+                  {/* ปุ่ม "เพิ่มไปตะกร้าพิมพ์" ถูกปิดใช้งานชั่วคราว (ซ่อนฟีเจอร์ตะกร้าพิมพ์บาร์โค้ด)
                   {copies.length > 0 && (
                     <button
                       onClick={() => {
@@ -250,6 +351,7 @@ export function BookCopiesDrawer({ open, onClose, book, categories = [] }: BookC
                       เพิ่มไปตะกร้าพิมพ์ ({copies.length})
                     </button>
                   )}
+                  */}
                 </div>
               </>
             )}
@@ -280,6 +382,7 @@ export function BookCopiesDrawer({ open, onClose, book, categories = [] }: BookC
               <InputField label="ผู้แต่ง" name="author" defaultValue={book.author ?? ""} />
               <InputField label="ISBN" name="isbn" defaultValue={book.isbn ?? ""} />
               <InputField label="สำนักพิมพ์" name="publisher" defaultValue={book.publisher ?? ""} />
+              <InputField label="ปีที่พิมพ์ (ค.ศ.)" name="publication_year" type="number" min={1900} max={new Date().getFullYear()} defaultValue={book.publication_year ?? ""} helper={book.is_old_eligible && book.status !== "old" ? "หนังสือนี้มีอายุครบ 5 ปีแล้ว" : undefined} />
               <InputField label="พิกัดชั้นวาง" name="shelf_location" defaultValue={book.shelf_location ?? ""} />
               <div className="sm:col-span-2 space-y-1.5">
                 <label className="block text-xs font-medium text-forest dark:text-slate-100 mb-1">
@@ -451,6 +554,54 @@ export function BookCopiesDrawer({ open, onClose, book, categories = [] }: BookC
                         </span>
                       )}
                     </div>
+                    <div className="flex items-center gap-1.5 mt-2">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openTimeline(copy);
+                        }}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-bold text-slate-600 dark:text-slate-300 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 transition"
+                      >
+                        <PhosphorIcon name="clock-counter-clockwise" className="text-xs" />
+                        ดูประวัติ
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDamagedCopy(copy);
+                          setDamagedUserId("");
+                          setDamagedQuery("");
+                          setDamagedResults([]);
+                          setDamagedError(null);
+                        }}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-bold text-price-red bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 transition"
+                      >
+                        <PhosphorIcon name="warning-circle" className="text-xs" />
+                        แจ้งชำรุด
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteCopy(copy);
+                          setDeleteError(null);
+                        }}
+                        disabled={copy.status === "borrowed" || copy.status === "lost"}
+                        title={
+                          copy.status === "borrowed"
+                            ? "ไม่สามารถลบได้ — เล่มนี้กำลังถูกยืมอยู่"
+                            : copy.status === "lost"
+                              ? "ไม่สามารถลบได้ — เล่มนี้ถูกแจ้งสูญหายอยู่"
+                              : "ลบเล่มลูกออกจากระบบ"
+                        }
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-bold text-slate-600 dark:text-slate-300 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <PhosphorIcon name="trash" className="text-xs" />
+                        ลบเล่ม
+                      </button>
+                    </div>
                   </div>
 
                   {/* ฟอร์มแก้ไขแบบ inline */}
@@ -545,6 +696,308 @@ export function BookCopiesDrawer({ open, onClose, book, categories = [] }: BookC
           )}
         </div>
       </aside>
+
+      {/* ===== Modal: ดูประวัติเล่มลูก (timeline) ===== */}
+      {timelineCopy && (
+        <div
+          className="fixed inset-0 z-[120] bg-black/50 flex items-center justify-center p-4"
+          onClick={() => setTimelineCopy(null)}
+        >
+          <div
+            className="bg-white dark:bg-card-bg rounded-2xl w-full max-w-md p-5 shadow-xl max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="font-bold text-lg text-forest dark:text-slate-100">
+                  ประวัติเล่ม {timelineCopy.barcode}
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {book?.title ?? "-"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTimelineCopy(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:bg-gray-100 dark:hover:bg-white/10"
+              >
+                <PhosphorIcon name="x" />
+              </button>
+            </div>
+
+            {timelineLoading ? (
+              <div className="flex items-center justify-center py-12 text-slate-400">
+                <PhosphorIcon name="circle-notch" className="animate-spin text-3xl" />
+              </div>
+            ) : timelineEvents.length === 0 ? (
+              <div className="text-center py-12 text-slate-400">
+                <PhosphorIcon name="book" className="text-4xl mx-auto mb-2" />
+                <p className="text-sm">ยังไม่มีประวัติ</p>
+              </div>
+            ) : (
+              <div className="relative">
+                {/* เส้นเวลา */}
+                <div className="absolute left-[11px] top-2 bottom-2 w-px bg-gray-200 dark:bg-white/10" />
+                <div className="space-y-3">
+                  {timelineEvents.map((ev) => (
+                    <div key={ev.id} className="relative flex gap-3 pl-1">
+                      <div
+                        className={`shrink-0 w-[22px] h-[22px] rounded-full flex items-center justify-center z-10 ${
+                          ev.type === "damaged"
+                            ? "bg-red-100 text-price-red"
+                            : ev.type === "paid"
+                              ? "bg-meb-light text-meb-green"
+                              : ev.type === "replaced"
+                                ? "bg-blue-100 text-blue-600"
+                                : ev.type === "removed"
+                                  ? "bg-slate-100 text-slate-500 dark:bg-white/10"
+                                  : "bg-gray-100 text-slate-500 dark:bg-white/10"
+                        }`}
+                      >
+                        <PhosphorIcon
+                          name={
+                            ev.type === "damaged"
+                              ? "warning"
+                              : ev.type === "paid"
+                                ? "currency-circle-dollar"
+                                : ev.type === "replaced"
+                                  ? "arrows-clockwise"
+                                  : ev.type === "removed"
+                                    ? "trash"
+                                    : ev.type === "created"
+                                      ? "plus"
+                                      : "book"
+                          }
+                          weight="fill"
+                          className="text-[11px]"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0 pb-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-bold text-forest dark:text-slate-100">
+                            {ev.title}
+                          </p>
+                          <span className="text-[10px] text-slate-400 shrink-0">
+                            {new Date(ev.at).toLocaleString("th-TH", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: false,
+                            })}
+                          </span>
+                        </div>
+                        {ev.description && (
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            {ev.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ===== Modal: แจ้งชำรุด ===== */}
+      {damagedCopy && (
+        <div
+          className="fixed inset-0 z-[120] bg-black/50 flex items-center justify-center p-4"
+          onClick={() => setDamagedCopy(null)}
+        >
+          <div
+            className="bg-white dark:bg-card-bg rounded-2xl w-full max-w-md p-5 shadow-xl max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="font-bold text-lg text-forest dark:text-slate-100">
+                  แจ้งหนังสือชำรุด
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  เล่ม {damagedCopy.barcode} จะถูกปิดการยืม และสมาชิกผู้รับผิดชอบจะถูกบล็อกจนกว่าจะชดใช้
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDamagedCopy(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:bg-gray-100 dark:hover:bg-white/10"
+              >
+                <PhosphorIcon name="x" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateDamaged} className="space-y-3">
+              {/* สมาชิกผู้รับผิดชอบ */}
+              <div>
+                <label className="block text-xs font-medium text-forest dark:text-slate-100 mb-1">
+                  สมาชิกผู้รับผิดชอบ <span className="text-price-red">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={damagedQuery}
+                  onChange={(e) => handleDamagedSearch(e.target.value)}
+                  placeholder="ค้นหาชื่อ / รหัสสมาชิก..."
+                  className="w-full px-3 py-2 text-sm bg-white dark:bg-card-bg border border-gray-200 dark:border-border-base rounded-md outline-none focus:border-meb-green focus:ring-2 focus:ring-meb-light"
+                />
+                {damagedSearching && (
+                  <p className="text-xs text-slate-400 mt-1">
+                    <PhosphorIcon name="circle-notch" className="animate-spin inline-block" />{" "}
+                    กำลังค้นหา...
+                  </p>
+                )}
+                {damagedResults.length > 0 && (
+                  <div className="mt-1 bg-white dark:bg-card-bg border border-gray-200 dark:border-border-base rounded-md max-h-48 overflow-y-auto">
+                    {damagedResults.map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => {
+                          setDamagedUserId(m.id);
+                          setDamagedQuery(`${m.full_name} (${m.user_id_code})`);
+                          setDamagedResults([]);
+                        }}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-meb-light/50 flex items-center justify-between gap-2 ${
+                          damagedUserId === m.id
+                            ? "bg-meb-light text-meb-green"
+                            : ""
+                        }`}
+                      >
+                        <span>
+                          <span className="font-bold">{m.full_name}</span>{" "}
+                          <span className="text-slate-500">({m.user_id_code})</span>
+                        </span>
+                        {damagedUserId === m.id && (
+                          <PhosphorIcon name="check" weight="bold" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <input type="hidden" name="user_id" value={damagedUserId} />
+              </div>
+
+              {/* หมายเหตุ */}
+              <div>
+                <label className="block text-xs font-medium text-forest dark:text-slate-100 mb-1">
+                  หมายเหตุ
+                </label>
+                <textarea
+                  name="note"
+                  rows={2}
+                  placeholder="ระบุลักษณะความชำรุด..."
+                  className="w-full px-3 py-2 text-sm bg-white dark:bg-card-bg border border-gray-200 dark:border-border-base rounded-md outline-none focus:border-meb-green resize-none"
+                />
+              </div>
+
+              {damagedError && (
+                <div className="text-price-red text-xs bg-red-50 dark:bg-red-500/10 px-3 py-2 rounded-md">
+                  {damagedError}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={pending}
+                className="w-full inline-flex items-center justify-center gap-2 bg-price-red hover:bg-red-700 text-white font-bold px-4 py-2.5 rounded-md text-sm transition disabled:opacity-60"
+              >
+                {pending ? (
+                  <PhosphorIcon name="circle-notch" className="animate-spin" />
+                ) : (
+                  <PhosphorIcon name="warning" weight="fill" />
+                )}
+                ยืนยันแจ้งชำรุด
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ===== Modal: ยืนยันลบเล่มลูก ===== */}
+      {deleteCopy && (
+        <div
+          className="fixed inset-0 z-[120] bg-black/50 flex items-center justify-center p-4"
+          onClick={() => setDeleteCopy(null)}
+        >
+          <div
+            className="bg-white dark:bg-card-bg rounded-2xl w-full max-w-md p-5 shadow-xl max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="font-bold text-lg text-forest dark:text-slate-100">
+                  ลบเล่มลูกออกจากระบบ
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  เล่ม <span className="font-mono font-bold text-forest dark:text-slate-100">{deleteCopy.barcode}</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeleteCopy(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:bg-gray-100 dark:hover:bg-white/10"
+              >
+                <PhosphorIcon name="x" />
+              </button>
+            </div>
+
+            <div className="flex items-start gap-2 text-price-red bg-red-50 dark:bg-red-500/10 px-3 py-2.5 rounded-lg text-sm mb-4">
+              <PhosphorIcon name="warning-circle" weight="fill" className="mt-0.5 shrink-0" />
+              <p>
+                เล่มนี้จะถูกถอดออกจากคลัง (ไม่นับในจำนวนเล่ม) และไม่สามารถยืมได้อีก
+                แต่<b>ประวัติยืม-คืน / ชำรุด / การลบยังคงอยู่ครบ</b>ในระบบ
+              </p>
+            </div>
+
+            <form onSubmit={handleDeleteCopy} className="space-y-3">
+              {/* หมายเหตุ */}
+              <div>
+                <label className="block text-xs font-medium text-forest dark:text-slate-100 mb-1">
+                  หมายเหตุ (เหตุผลที่ลบ)
+                </label>
+                <textarea
+                  name="note"
+                  rows={2}
+                  placeholder="เช่น ชำรุดเกินซ่อม, หมดอายุ, ยกเลิกใช้..."
+                  className="w-full px-3 py-2 text-sm bg-white dark:bg-card-bg border border-gray-200 dark:border-border-base rounded-md outline-none focus:border-meb-green resize-none"
+                />
+              </div>
+
+              {deleteError && (
+                <div className="text-price-red text-xs bg-red-50 dark:bg-red-500/10 px-3 py-2 rounded-md">
+                  {deleteError}
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDeleteCopy(null)}
+                  className="flex-1 inline-flex items-center justify-center gap-2 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-slate-700 dark:text-slate-200 font-bold px-4 py-2.5 rounded-md text-sm transition"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  disabled={pending}
+                  className="flex-1 inline-flex items-center justify-center gap-2 bg-price-red hover:bg-red-700 text-white font-bold px-4 py-2.5 rounded-md text-sm transition disabled:opacity-60"
+                >
+                  {pending ? (
+                    <PhosphorIcon name="circle-notch" className="animate-spin" />
+                  ) : (
+                    <PhosphorIcon name="trash" weight="fill" />
+                  )}
+                  ยืนยันลบ
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -555,11 +1008,19 @@ function InputField({
   name,
   defaultValue,
   required,
+  type,
+  min,
+  max,
+  helper,
 }: {
   label: string;
   name: string;
-  defaultValue?: string;
+  defaultValue?: string | number;
   required?: boolean;
+  type?: string;
+  min?: number;
+  max?: number;
+  helper?: string;
 }) {
   return (
     <div>
@@ -568,12 +1029,17 @@ function InputField({
         {required && <span className="text-price-red"> *</span>}
       </label>
       <input
-        type="text"
+        type={type ?? "text"}
         name={name}
         defaultValue={defaultValue}
         required={required}
+        min={min}
+        max={max}
         className="w-full pl-2 pr-2 py-2 text-sm bg-white dark:bg-card-bg border border-gray-200 dark:border-border-base rounded-md outline-none focus:border-meb-green focus:ring-2 focus:ring-meb-light text-forest dark:text-slate-100"
       />
+      {helper && (
+        <p className="text-[10px] text-terracotta mt-1">{helper}</p>
+      )}
     </div>
   );
 }

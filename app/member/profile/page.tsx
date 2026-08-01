@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { ProfileClient } from "./components/profile-client";
 import { getDropdownOptionsAction } from "@/app/staff/settings/dropdowns/actions";
+import { computeExpiry } from "@/utils/student-expiry";
 
 export const metadata: Metadata = {
   title: "โปรไฟล์ของฉัน",
@@ -24,7 +25,7 @@ export default async function MemberProfilePage() {
   const [profileRes, dropdownsRes] = await Promise.all([
     supabase
       .from("users")
-      .select("*")
+      .select("*, dropdown_class_groups(start_date, duration_years)")
       .eq("id", user.id)
       .maybeSingle(),
     getDropdownOptionsAction(),
@@ -35,6 +36,12 @@ export default async function MemberProfilePage() {
   if (!profile) {
     redirect("/login");
   }
+
+  const group = profile.dropdown_class_groups ?? null;
+  const expiry = computeExpiry({
+    start_date: group?.start_date,
+    duration_years: group?.duration_years,
+  });
 
   return (
     <ProfileClient
@@ -61,6 +68,11 @@ export default async function MemberProfilePage() {
         class_group_id: profile.class_group_id,
         class_group: profile.class_group,
         gender: profile.gender ?? "not_specified",
+        status: profile.status ?? "active",
+        suspended_reason: profile.suspended_reason ?? null,
+        suspended_at: profile.suspended_at ?? null,
+        expired: expiry.isExpired,
+        expiry_date: expiry.expiryDate,
       }}
       userEmail={user.email ?? null}
       departments={dropdownsRes.departments || []}

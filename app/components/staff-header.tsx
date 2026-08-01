@@ -30,7 +30,7 @@ export function StaffHeader({
   const initials = fullName.slice(0, 2).trim();
 
   return (
-    <header className="sticky top-0 z-50 bg-meb-green w-full shadow-md">
+    <header className="sticky top-0 z-50 bg-meb-green w-full shadow-md print:hidden">
       <div className="max-w-[1200px] mx-auto h-[60px] px-4 flex items-center justify-between gap-4">
         {/* Logo area */}
         <Link

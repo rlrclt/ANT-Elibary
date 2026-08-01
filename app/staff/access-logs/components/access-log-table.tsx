@@ -5,7 +5,7 @@ import type { AccessLogWithUser } from "../actions";
 
 /**
  * access-log-table — ตารางประวัติการเข้าใช้ห้องสมุด
- * คอลัมน์: สมาชิก, เวลาเข้า, เวลาออก, ระยะเวลา, สถานะ, การจัดการ
+ * คอลัมน์: สมาชิก, วัตถุประสงค์, เวลาเข้า, เวลาออก, ระยะเวลา, สถานะ, การจัดการ
  */
 type AccessLogTableProps = {
   logs: AccessLogWithUser[];
@@ -73,6 +73,7 @@ export function AccessLogTable({ logs, onManualCheckOut }: AccessLogTableProps) 
           <thead>
             <tr className="border-b border-gray-100 dark:border-border-base text-left text-xs text-slate-500 dark:text-slate-400">
               <th className="px-4 py-3 font-medium">สมาชิก</th>
+              <th className="px-4 py-3 font-medium">วัตถุประสงค์</th>
               <th className="px-4 py-3 font-medium">เวลาเข้า</th>
               <th className="px-4 py-3 font-medium">เวลาออก</th>
               <th className="px-4 py-3 font-medium">ระยะเวลา</th>
@@ -111,6 +112,17 @@ export function AccessLogTable({ logs, onManualCheckOut }: AccessLogTableProps) 
                         )}
                       </div>
                     </div>
+                  </td>
+
+                  {/* วัตถุประสงค์ */}
+                  <td className="px-4 py-3 min-w-[140px]">
+                    <p className="text-slate-600 dark:text-slate-300">{log.purpose}</p>
+                    {log.note && (
+                      <span className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+                        <PhosphorIcon name="warning" className="text-[10px]" />
+                        ระบบปิดให้อัตโนมัติ
+                      </span>
+                    )}
                   </td>
 
                   {/* เวลาเข้า */}

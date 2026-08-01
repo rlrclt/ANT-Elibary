@@ -65,6 +65,21 @@ export type MemberFineSummary = {
 
 type ActionResult<T> = { data: T | null; error: string | null };
 
+// ---------- 0. hasUnresolvedDamaged ----------
+/**
+ * ตรวจว่าสมาชิกมีรายการหนังสือชำรุดที่ยังค้างชดใช้อยู่หรือไม่
+ * ถ้ามี → บล็อกการยืมเล่มใหม่จนกว่าจะจ่ายค่าปรับเต็มราคาหรือซื้อหนังสือมาคืน
+ */
+async function hasUnresolvedDamaged(userId: string): Promise<boolean> {
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from("damaged_records")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("status", "unresolved");
+  return (count ?? 0) > 0;
+}
+
 // ---------- 1. getMyBorrowsAction ----------
 /**
  * ดึงประวัติยืมทั้งหมดของสมาชิกที่ล็อกอินอยู่ (รวมที่คืนแล้ว)
@@ -314,7 +329,7 @@ export async function memberBorrowAction(
     .select(
       `
       id, status,
-      books!book_copies_book_id_fkey ( title )
+      books!book_copies_book_id_fkey ( title, status )
       `,
     )
     .eq("barcode", barcode)
@@ -326,6 +341,13 @@ export async function memberBorrowAction(
   if (copy.status !== "available")
     return {
       error: `เล่มนี้ไม่พร้อมยืม (สถานะปัจจุบัน: ${copy.status})`,
+      recordId: null,
+      bookTitle: null,
+    };
+  // บล็อกหนังสือเก่า (status='old' ของเล่มแม่) — ไม่ให้ยืม
+  if ((copy as any).books?.status === "old")
+    return {
+      error: "หนังสือเล่มนี้เป็นหนังสือเก่า (อายุ 5 ปีขึ้นไป) ไม่สามารถยืมได้",
       recordId: null,
       bookTitle: null,
     };
@@ -343,6 +365,14 @@ export async function memberBorrowAction(
   if (member.status !== "active")
     return {
       error: "บัญชีไม่อยู่ในสถานะใช้งาน ไม่สามารถยืมได้",
+      recordId: null,
+      bookTitle: null,
+    };
+
+  // บล็อกการยืมถ้ามีหนังสือชำรุดค้างชดใช้
+  if (await hasUnresolvedDamaged(user.id))
+    return {
+      error: "คุณมีหนังสือชำรุดค้างชดใช้ ต้องจ่ายค่าปรับเต็มราคาหรือซื้อหนังสือมาคืนก่อน",
       recordId: null,
       bookTitle: null,
     };
@@ -460,6 +490,26 @@ export async function memberReturnAction(
 
   const barcode = String(formData.get("barcode") ?? "").trim();
   const recordId = String(formData.get("record_id") ?? "").trim();
+
+  // ตรวจสถานะสมาชิก — บัญชีที่ถูกระงับ/ไม่ active คืนหนังสือเองไม่ได้
+  const { data: member, error: mErr } = await supabase
+    .from("users")
+    .select("id, status")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (mErr) return { error: mErr.message, fineAmount: 0, bookTitle: null };
+  if (!member) return { error: "ไม่พบข้อมูลสมาชิก", fineAmount: 0, bookTitle: null };
+  if (member.status !== "active") {
+    return {
+      error:
+        member.status === "suspended"
+          ? "บัญชีของคุณถูกระงับการใช้งาน กรุณาติดต่อเจ้าหน้าที่ห้องสมุดเพื่อคืนหนังสือ"
+          : "บัญชีไม่อยู่ในสถานะใช้งาน ไม่สามารถคืนหนังสือได้",
+      fineAmount: 0,
+      bookTitle: null,
+    };
+  }
 
   // กรณีคืนผ่านปุ่มในรายการ (มี record_id มาเลย)
   let targetRecordId = recordId;

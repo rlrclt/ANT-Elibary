@@ -215,7 +215,7 @@ export default function LinePreviewPage() {
               <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-[#EAEAEA]">
                 {/* Time */}
                 <p className="text-center text-xs text-slate-400">
-                  {new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}
+                  {new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", hour12: false })}
                 </p>
 
                 {/* Bot avatar + message */}

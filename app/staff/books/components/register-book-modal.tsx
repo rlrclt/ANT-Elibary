@@ -218,6 +218,34 @@ export function RegisterBookModal({ open, onClose, categories }: RegisterBookMod
               icon="barcode"
             />
 
+            <div>
+              <label
+                htmlFor="publication_year"
+                className="block text-sm font-medium text-forest dark:text-slate-100 mb-1.5"
+              >
+                ปีที่พิมพ์ (ค.ศ.) <span className="text-price-red">*</span>
+              </label>
+              <div className="relative">
+                <PhosphorIcon
+                  name="calendar-blank"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg pointer-events-none"
+                />
+                <input
+                  id="publication_year"
+                  name="publication_year"
+                  type="number"
+                  min={1900}
+                  max={new Date().getFullYear()}
+                  required
+                  placeholder="เช่น 2023"
+                  className="w-full pl-10 pr-3 py-2.5 text-sm bg-white dark:bg-card-bg border border-gray-200 dark:border-border-base rounded-md outline-none transition focus:border-meb-green focus:ring-2 focus:ring-meb-light text-forest dark:text-slate-100"
+                />
+              </div>
+              <p className="text-xs text-slate-500 mt-1.5">
+                หนังสืออายุ 5 ปีขึ้นไปนับจากปีที่พิมพ์ จะถูกจัดเป็น "หนังสือเก่า"
+              </p>
+            </div>
+
             <TextField
               label="สำนักพิมพ์"
               name="publisher"

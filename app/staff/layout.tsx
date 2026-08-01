@@ -71,7 +71,7 @@ export default async function StaffLayout({
       />
 
       {/* Mobile nav — แทน sidebar บนมือถือ */}
-      <nav className="md:hidden bg-white dark:bg-card-bg border-b border-gray-200 dark:border-border-base sticky top-[60px] z-40 shadow-sm transition-colors">
+      <nav className="md:hidden bg-white dark:bg-card-bg border-b border-gray-200 dark:border-border-base sticky top-[60px] z-40 shadow-sm transition-colors print:hidden">
         <div className="px-4 flex items-center gap-2 overflow-x-auto whitespace-nowrap hide-scrollbar py-2">
           <Link
             href="/staff"
@@ -84,6 +84,12 @@ export default async function StaffLayout({
             className="px-4 py-1.5 text-gray-600 hover:bg-gray-50 font-medium text-sm rounded-full border border-gray-200 flex items-center gap-1.5 transition-colors shrink-0"
           >
             <PhosphorIcon name="books" /> หนังสือ
+          </Link>
+          <Link
+            href="/staff/books/damaged"
+            className="px-4 py-1.5 text-gray-600 hover:bg-gray-50 font-medium text-sm rounded-full border border-gray-200 flex items-center gap-1.5 transition-colors shrink-0"
+          >
+            <PhosphorIcon name="warning-circle" /> หนังสือชำรุด
           </Link>
           <Link
             href="/staff/members"

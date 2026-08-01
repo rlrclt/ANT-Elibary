@@ -7,6 +7,8 @@ import { AccessClient } from "./components/access-client";
 import {
   getMyActiveLogAction,
   getMyAccessHistoryAction,
+  getAccessPurposesAction,
+  getTodayLibraryHoursAction,
 } from "./actions";
 
 export const metadata: Metadata = {
@@ -39,10 +41,13 @@ export default async function MemberAccessPage() {
   }
 
   // ดึงข้อมูลเริ่มต้นพร้อมกัน
-  const [activeResult, historyResult] = await Promise.all([
-    getMyActiveLogAction(),
-    getMyAccessHistoryAction(),
-  ]);
+  const [activeResult, historyResult, purposesResult, hoursResult] =
+    await Promise.all([
+      getMyActiveLogAction(),
+      getMyAccessHistoryAction(),
+      getAccessPurposesAction(),
+      getTodayLibraryHoursAction(),
+    ]);
 
   return (
     <div className="space-y-5">
@@ -71,6 +76,14 @@ export default async function MemberAccessPage() {
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             เช็คอินและเช็คเอาท์เพื่อบันทึกการเข้าใช้ห้องสมุด
           </p>
+          {hoursResult.data && (
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 inline-flex items-center gap-1.5">
+              <PhosphorIcon name="clock" className="text-meb-green" />
+              {hoursResult.data.isOpen
+                ? `วันนี้เปิด ${hoursResult.data.openTime} - ${hoursResult.data.closeTime}`
+                : "วันนี้ห้องสมุดปิดทำการ"}
+            </p>
+          )}
         </div>
       </div>
 
@@ -78,6 +91,7 @@ export default async function MemberAccessPage() {
       <AccessClient
         initialActiveLog={activeResult.data}
         initialHistory={historyResult.data}
+        initialPurposes={purposesResult.data}
       />
     </div>
   );

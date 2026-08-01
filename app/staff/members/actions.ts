@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { revalidatePath } from "next/cache";
+import { computeExpiry } from "@/utils/student-expiry";
 
 /**
  * Server Actions สำหรับ /staff/members
@@ -35,6 +36,13 @@ export type User = {
   class_group_id: string | null;
   class_group: string | null;
   gender: string | null;
+  suspended_reason: string | null;
+  suspended_at: string | null;
+  suspended_by: string | null;
+  // คำนวณแบบ virtual จาก dropdown_class_groups
+  expired: boolean;
+  expiry_date: string | null;
+  days_remaining: number | null;
 };
 
 export type UserStats = {
@@ -47,8 +55,53 @@ export type UserStats = {
 type MemberFilters = {
   search?: string;
   role?: "all" | "member" | "staff" | "admin";
-  status?: "all" | "active" | "suspended";
+  status?: "all" | "active" | "suspended" | "expired";
+  academicYear?: string;
+  departmentId?: string;
+  classLevelId?: string;
+  classGroupId?: string;
 };
+
+/** แปลงผลลัพธ์จาก Supabase เป็น User พร้อมคำนวณสถานะพ้นสภาพ */
+function mapUser(raw: any): User {
+  const group = raw.dropdown_class_groups ?? null;
+  const expiry = computeExpiry({
+    start_date: group?.start_date,
+    duration_years: group?.duration_years,
+  });
+
+  return {
+    id: raw.id,
+    user_id_code: raw.user_id_code,
+    full_name: raw.full_name,
+    email: raw.email,
+    department: raw.department,
+    class_level: raw.class_level,
+    class_number: raw.class_number,
+    role: raw.role,
+    status: raw.status,
+    borrow_limit: raw.borrow_limit,
+    fine_balance: Number(raw.fine_balance ?? 0),
+    phone: raw.phone,
+    avatar_url: raw.avatar_url,
+    address: raw.address,
+    created_at: raw.created_at,
+    user_type: raw.user_type,
+    department_id: raw.department_id,
+    class_level_id: raw.class_level_id,
+    room_level_id: raw.room_level_id,
+    room_level: raw.room_level,
+    class_group_id: raw.class_group_id,
+    class_group: raw.class_group,
+    gender: raw.gender,
+    suspended_reason: raw.suspended_reason ?? null,
+    suspended_at: raw.suspended_at ?? null,
+    suspended_by: raw.suspended_by ?? null,
+    expired: expiry.isExpired,
+    expiry_date: expiry.expiryDate,
+    days_remaining: expiry.daysRemaining,
+  };
+}
 
 // ---------- 1. getMembersAction ----------
 export async function getMembersAction(filters?: MemberFilters): Promise<{
@@ -59,7 +112,7 @@ export async function getMembersAction(filters?: MemberFilters): Promise<{
   let query = supabase
     .from("users")
     .select(
-      "id, user_id_code, full_name, email, department, class_level, class_number, role, status, borrow_limit, fine_balance, phone, avatar_url, address, created_at, user_type, department_id, class_level_id, room_level_id, room_level, class_group_id, class_group, gender",
+      "id, user_id_code, full_name, email, department, class_level, class_number, role, status, borrow_limit, fine_balance, phone, avatar_url, address, created_at, user_type, department_id, class_level_id, room_level_id, room_level, class_group_id, class_group, gender, suspended_reason, suspended_at, suspended_by, dropdown_class_groups(start_date, duration_years)",
     )
     .order("created_at", { ascending: false });
 
@@ -72,14 +125,35 @@ export async function getMembersAction(filters?: MemberFilters): Promise<{
   if (filters?.role && filters.role !== "all") {
     query = query.eq("role", filters.role);
   }
-  if (filters?.status && filters.status !== "all") {
+  if (filters?.status && filters.status !== "all" && filters.status !== "expired") {
     query = query.eq("status", filters.status);
+  }
+  // ตัวกรองลดหลั่น: ปีการศึกษา → แผนก → ระดับชั้น → รหัสกลุ่มเรียน
+  if (filters?.academicYear) {
+    query = query.eq("dropdown_class_groups.academic_year", filters.academicYear);
+  }
+  if (filters?.departmentId) {
+    query = query.eq("department_id", filters.departmentId);
+  }
+  if (filters?.classLevelId) {
+    query = query.eq("class_level_id", filters.classLevelId);
+  }
+  if (filters?.classGroupId) {
+    query = query.eq("class_group_id", filters.classGroupId);
   }
 
   const { data, error } = await query;
 
   if (error) return { data: null, error: error.message };
-  return { data: data as User[], error: null };
+
+  let users = (data ?? []).map(mapUser);
+
+  // "พ้นสภาพ" เป็นสถานะคำนวณแบบ virtual → กรองฝั่ง TS
+  if (filters?.status === "expired") {
+    users = users.filter((u) => u.expired);
+  }
+
+  return { data: users, error: null };
 }
 
 // ---------- 2. getMemberStatsAction ----------
@@ -133,7 +207,8 @@ export async function updateMemberAction(
 
   const email = String(formData.get("email") ?? "").trim() || null;
   const role = String(formData.get("role") ?? "member") as "member" | "staff" | "admin";
-  const status = String(formData.get("status") ?? "active") as "active" | "suspended";
+  // สถานะจากฟอร์ม (select ถูก disabled ใน drawer → จะไม่มีค่า = ให้คงสถานะเดิม)
+  const submittedStatus = String(formData.get("status") ?? "").trim() as "active" | "suspended" | "";
   const borrowLimit = parseInt(String(formData.get("borrow_limit") ?? "5"), 10);
   const phone = String(formData.get("phone") ?? "").trim() || null;
   const address = String(formData.get("address") ?? "").trim() || null;
@@ -148,16 +223,20 @@ export async function updateMemberAction(
   const classNumber = String(formData.get("class_number") ?? "").trim() || null;
   const gender = String(formData.get("gender") ?? "not_specified").trim();
 
-  // 1. ดึงข้อมูลเดิมเพื่อตรวจสอบการเปลี่ยนแปลง
+  // 1. ดึงข้อมูลเดิมเพื่อตรวจสอบการเปลี่ยนแปลง + เก็บสถานะปัจจุบัน
   const { data: oldUser, error: fetchError } = await adminClient
     .from("users")
-    .select("email")
+    .select("email, status")
     .eq("id", id)
     .maybeSingle();
 
   if (fetchError || !oldUser) {
     return { error: "ไม่พบข้อมูลสมาชิก" };
   }
+
+  // ถ้าฟอร์มไม่ส่งสถานะมา (disabled) ให้คงสถานะเดิมไว้
+  const status: "active" | "suspended" =
+    submittedStatus || (oldUser.status as "active" | "suspended");
 
   // 2. ถ้ามีการเปลี่ยนอีเมล ตรวจสอบว่าซ้ำกับผู้อื่นหรือไม่
   if (email && email !== oldUser.email) {
@@ -206,25 +285,45 @@ export async function updateMemberAction(
   }
 
   // 4. อัปเดตตาราง public.users
+  const updateData: any = {
+    full_name: fullName,
+    email,
+    role,
+    borrow_limit: isNaN(borrowLimit) ? 5 : borrowLimit,
+    phone,
+    address,
+    avatar_url: avatarUrl,
+    user_type: userType,
+    department_id: departmentId,
+    class_level_id: classLevelId,
+    room_level_id: roomLevelId,
+    class_group_id: classGroupId,
+    class_number: classNumber,
+    gender,
+  };
+
+  // ซิงก์ข้อมูลการระงับตามสถานะที่ส่งมา
+  const suspendReason = String(formData.get("suspended_reason") ?? "").trim() || null;
+  if (status === "suspended") {
+    updateData.status = "suspended";
+    if (suspendReason) {
+      const {
+        data: { user: me },
+      } = await adminClient.auth.getUser();
+      updateData.suspended_reason = suspendReason;
+      updateData.suspended_at = new Date().toISOString();
+      updateData.suspended_by = me?.id ?? null;
+    }
+  } else if (status === "active") {
+    updateData.status = "active";
+    updateData.suspended_reason = null;
+    updateData.suspended_at = null;
+    updateData.suspended_by = null;
+  }
+
   const { error } = await adminClient
     .from("users")
-    .update({
-      full_name: fullName,
-      email,
-      role,
-      status,
-      borrow_limit: isNaN(borrowLimit) ? 5 : borrowLimit,
-      phone,
-      address,
-      avatar_url: avatarUrl,
-      user_type: userType,
-      department_id: departmentId,
-      class_level_id: classLevelId,
-      room_level_id: roomLevelId,
-      class_group_id: classGroupId,
-      class_number: classNumber,
-      gender,
-    })
+    .update(updateData)
     .eq("id", id);
 
   if (error) return { error: error.message };
@@ -233,16 +332,32 @@ export async function updateMemberAction(
 }
 
 // ---------- 4. suspendMemberAction ----------
+/**
+ * ระงับบัญชีสมาชิก (ต้องระบุเหตุผล)
+ * บันทึก suspended_at + suspended_by ไว้เป็น audit trail
+ */
 export async function suspendMemberAction(
   formData: FormData,
 ): Promise<{ error: string | null }> {
-  const supabase = await createClient();
+  const adminClient = createAdminClient();
   const id = String(formData.get("id") ?? "");
   if (!id) return { error: "ไม่พบ ID สมาชิก" };
 
-  const { error } = await supabase
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (!reason) return { error: "กรุณาระบุเหตุผลการระงับ" };
+
+  const {
+    data: { user: me },
+  } = await adminClient.auth.getUser();
+
+  const { error } = await adminClient
     .from("users")
-    .update({ status: "suspended" })
+    .update({
+      status: "suspended",
+      suspended_reason: reason,
+      suspended_at: new Date().toISOString(),
+      suspended_by: me?.id ?? null,
+    })
     .eq("id", id);
 
   if (error) return { error: error.message };
@@ -254,14 +369,55 @@ export async function suspendMemberAction(
 export async function activateMemberAction(
   formData: FormData,
 ): Promise<{ error: string | null }> {
-  const supabase = await createClient();
+  const adminClient = createAdminClient();
   const id = String(formData.get("id") ?? "");
   if (!id) return { error: "ไม่พบ ID สมาชิก" };
 
-  const { error } = await supabase
+  const { error } = await adminClient
     .from("users")
-    .update({ status: "active" })
+    .update({
+      status: "active",
+      suspended_reason: null,
+      suspended_at: null,
+      suspended_by: null,
+    })
     .eq("id", id);
+
+  if (error) return { error: error.message };
+  revalidatePath("/staff/members");
+  return { error: null };
+}
+
+// ---------- 5.5 suspendMembersByGroupAction ----------
+/**
+ * ระงับสมาชิกทั้งกลุ่มเรียน (ตาม class_group_id)
+ * ใช้กับสมาชิกที่ "พ้นสภาพ" — admin กดระงับทีละกลุ่มได้
+ */
+export async function suspendMembersByGroupAction(
+  formData: FormData,
+): Promise<{ error: string | null }> {
+  const adminClient = createAdminClient();
+  const classGroupId = String(formData.get("class_group_id") ?? "").trim();
+  if (!classGroupId) return { error: "ไม่พบรหัสกลุ่มเรียน" };
+
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (!reason) return { error: "กรุณาระบุเหตุผลการระงับ" };
+
+  const {
+    data: { user: me },
+  } = await adminClient.auth.getUser();
+
+  const { error } = await adminClient
+    .from("users")
+    .update({
+      status: "suspended",
+      suspended_reason: reason,
+      suspended_at: new Date().toISOString(),
+      suspended_by: me?.id ?? null,
+    })
+    .eq("class_group_id", classGroupId)
+    .eq("role", "member")
+    .eq("status", "active");
 
   if (error) return { error: error.message };
   revalidatePath("/staff/members");

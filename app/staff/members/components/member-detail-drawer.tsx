@@ -12,6 +12,7 @@ import {
 /**
  * member-detail-drawer — แผงรายละเอียด/แก้ไขสมาชิก
  * Slide-in จากขวา, ฟอร์มแก้ไขข้อมูล + ปุ่มระงับ/เปิดใช้งาน
+ * การระงับต้องระบุเหตุผล (modal ขอเหตุผลก่อนยืนยัน)
  */
 import type { DropdownOption } from "@/app/staff/settings/dropdowns/actions";
 
@@ -40,6 +41,17 @@ function getInitials(name: string): string {
   return name.slice(0, 2).toUpperCase();
 }
 
+// ฟอร์แมตวันที่ dd/MM/yyyy
+function formatDate(iso: string | null): string {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "-";
+  const dd = d.getDate().toString().padStart(2, "0");
+  const mm = (d.getMonth() + 1).toString().padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+
 const ROLE_LABEL: Record<User["role"], string> = {
   member: "สมาชิก",
   staff: "เจ้าหน้าที่",
@@ -65,6 +77,9 @@ export function MemberDetailDrawer({
   const [alert, setAlert] = useState<{ type: "success" | "error"; msg: string } | null>(null);
   const [currentStatus, setCurrentStatus] = useState<User["status"] | null>(null);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [suspendModalOpen, setSuspendModalOpen] = useState(false);
+  const [suspendReason, setSuspendReason] = useState("");
+  const [suspendError, setSuspendError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
   // เก็บสถานะปัจจุบันไว้สำหรับสลับปุ่ม suspend/activate
@@ -87,6 +102,9 @@ export function MemberDetailDrawer({
       setSelectedClassGroupId(user.class_group_id || "");
       setSelectedGender(user.gender || "not_specified");
       setCurrentStatus(null);
+      setSuspendModalOpen(false);
+      setSuspendReason("");
+      setSuspendError(null);
     }
   }, [user]);
 
@@ -112,29 +130,50 @@ export function MemberDetailDrawer({
     formRef.current?.requestSubmit();
   }
 
-  // สลับสถานะระงับ/เปิดใช้งาน
-  function handleToggleStatus() {
+  // กดปุ่ม "ระงับบัญชี" → เปิด modal ขอเหตุผล
+  function handleSuspendClick() {
+    setSuspendModalOpen(true);
+    setSuspendReason("");
+    setSuspendError(null);
+  }
+
+  // ยืนยันการระงับจาก modal
+  function handleConfirmSuspend() {
+    if (!user) return;
+    if (!suspendReason.trim()) {
+      setSuspendError("กรุณาระบุเหตุผลการระงับ");
+      return;
+    }
+    setSuspendError(null);
+    const formData = new FormData();
+    formData.set("id", user.id);
+    formData.set("reason", suspendReason.trim());
+    startStatusTransition(async () => {
+      const res = await suspendMemberAction(formData);
+      if (res.error) {
+        setSuspendError(res.error);
+        return;
+      }
+      setCurrentStatus("suspended");
+      setSuspendModalOpen(false);
+      setAlert({ type: "success", msg: "ระงับบัญชีเรียบร้อยแล้ว" });
+    });
+  }
+
+  // เปิดใช้งานบัญชี (ล้างข้อมูลระงับ)
+  function handleActivate() {
     if (!user) return;
     setAlert(null);
     const formData = new FormData();
     formData.set("id", user.id);
     startStatusTransition(async () => {
-      const res =
-        activeStatus === "active"
-          ? await suspendMemberAction(formData)
-          : await activateMemberAction(formData);
+      const res = await activateMemberAction(formData);
       if (res.error) {
         setAlert({ type: "error", msg: res.error });
         return;
       }
-      setCurrentStatus(activeStatus === "active" ? "suspended" : "active");
-      setAlert({
-        type: "success",
-        msg:
-          activeStatus === "active"
-            ? "ระงับบัญชีเรียบร้อยแล้ว"
-            : "เปิดใช้งานบัญชีเรียบร้อยแล้ว",
-      });
+      setCurrentStatus("active");
+      setAlert({ type: "success", msg: "เปิดใช้งานบัญชีเรียบร้อยแล้ว" });
     });
   }
 
@@ -473,7 +512,7 @@ export function MemberDetailDrawer({
                   </select>
                 </div>
 
-                {/* Status */}
+                {/* Status (read-only — เปลี่ยนสถานะผ่านปุ่ม "ระงับบัญชี" เท่านั้น ซึ่งต้องระบุเหตุผล) */}
                 <div className="md:col-span-3">
                   <label className="block text-sm font-medium text-forest dark:text-slate-100 mb-1.5">
                     สถานะ
@@ -481,11 +520,15 @@ export function MemberDetailDrawer({
                   <select
                     name="status"
                     defaultValue={user.status}
-                    className="w-full pl-3 pr-3 py-2.5 text-sm bg-white dark:bg-card-bg border border-gray-200 dark:border-border-base rounded-md outline-none focus:border-meb-green focus:ring-2 focus:ring-meb-light text-forest dark:text-slate-100"
+                    disabled
+                    className="w-full pl-3 pr-3 py-2.5 text-sm bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-border-base rounded-md outline-none text-slate-500 dark:text-slate-400 cursor-not-allowed"
                   >
                     <option value="active">ใช้งาน</option>
                     <option value="suspended">ระงับ</option>
                   </select>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    ระงับ/เปิดใช้งาน ใช้ปุ่มด้านล่าง (การระงับต้องระบุเหตุผล)
+                  </p>
                 </div>
 
                 {/* Borrow limit */}
@@ -535,6 +578,22 @@ export function MemberDetailDrawer({
                       {STATUS_LABEL[activeStatus ?? user.status]}
                     </span>
                   </p>
+                  {(activeStatus ?? user.status) === "suspended" && (
+                    <>
+                      {user.suspended_reason && (
+                        <p className="text-price-red">
+                          เหตุผลระงับ:{" "}
+                          <span className="font-medium">{user.suspended_reason}</span>
+                        </p>
+                      )}
+                      <p>
+                        วันที่ระงับ:{" "}
+                        <span className="font-medium text-forest dark:text-slate-100">
+                          {formatDate(user.suspended_at)}
+                        </span>
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
             </form>
@@ -562,7 +621,7 @@ export function MemberDetailDrawer({
               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto order-1 sm:order-2">
                 <button
                   type="button"
-                  onClick={handleToggleStatus}
+                  onClick={activeStatus === "active" ? handleSuspendClick : handleActivate}
                   disabled={pending || statusPending}
                   className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 font-bold px-4 py-2.5 rounded-md text-sm transition disabled:opacity-60 disabled:cursor-not-allowed ${
                     activeStatus === "active"
@@ -598,6 +657,86 @@ export function MemberDetailDrawer({
           </div>
         )}
       </aside>
+
+      {/* Modal ขอเหตุผลการระงับ */}
+      {suspendModalOpen && user && (
+        <>
+          <div
+            className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm"
+            onClick={() => !statusPending && setSuspendModalOpen(false)}
+          />
+          <div className="fixed inset-0 z-[105] flex items-center justify-center p-4">
+            <div className="w-full max-w-md bg-white dark:bg-card-bg rounded-2xl shadow-2xl border border-gray-100 dark:border-border-base p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-forest dark:text-slate-100 flex items-center gap-2">
+                  <PhosphorIcon name="prohibit" weight="fill" className="text-price-red" />
+                  ระงับบัญชีสมาชิก
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setSuspendModalOpen(false)}
+                  disabled={statusPending}
+                  className="p-1.5 rounded-lg text-slate-400 hover:bg-gray-100 dark:hover:bg-white/10 transition"
+                  aria-label="ปิด"
+                >
+                  <PhosphorIcon name="x" className="text-xl" />
+                </button>
+              </div>
+
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                กำลังระงับบัญชีของ{" "}
+                <span className="font-bold text-forest dark:text-slate-100">{user.full_name}</span>{" "}
+                ({user.user_id_code}) สมาชิกจะเข้าใช้บริการยืม/คืน/เช็คอินไม่ได้ แต่ยังดูประวัติได้
+              </p>
+
+              {suspendError && (
+                <div className="flex items-center gap-2 p-3 rounded-lg text-sm bg-red-50 dark:bg-red-500/10 text-price-red">
+                  <PhosphorIcon name="warning" weight="fill" />
+                  {suspendError}
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-forest dark:text-slate-100">
+                  เหตุผลการระงับ <span className="text-price-red">*</span>
+                </label>
+                <textarea
+                  value={suspendReason}
+                  onChange={(e) => setSuspendReason(e.target.value)}
+                  rows={3}
+                  placeholder="เช่น พ้นสภาพการเป็นนักศึกษา ครบกำหนดหลักสูตร 3 ปี..."
+                  className="w-full px-3 py-2.5 text-sm bg-white dark:bg-card-bg border border-gray-200 dark:border-border-base rounded-md outline-none focus:border-meb-green focus:ring-2 focus:ring-meb-light text-forest dark:text-slate-100 resize-none"
+                  autoFocus
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setSuspendModalOpen(false)}
+                  disabled={statusPending}
+                  className="px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 bg-gray-50 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 border border-gray-200 dark:border-border-base rounded-md transition disabled:opacity-60"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmSuspend}
+                  disabled={statusPending}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-price-red hover:bg-red-700 rounded-md transition disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {statusPending ? (
+                    <PhosphorIcon name="circle-notch" className="animate-spin" />
+                  ) : (
+                    <PhosphorIcon name="prohibit" weight="bold" />
+                  )}
+                  ยืนยันการระงับ
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }

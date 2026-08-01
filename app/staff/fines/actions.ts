@@ -437,7 +437,32 @@ export async function approveFineAction(
     .eq("status", "pending");
 
   if (error) return { error: error.message };
+
+  // ถ้าเป็นการชำระค่าชดใช้หนังสือชำรุด → resolve รายการชำรุดให้อัตโนมัติ
+  const { data: payment } = await supabase
+    .from("fine_payments")
+    .select("damaged_record_id")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (payment?.damaged_record_id) {
+    const { error: damagedErr } = await supabase
+      .from("damaged_records")
+      .update({
+        status: "paid",
+        resolution_method: "payment",
+        fine_payment_id: id,
+        handled_by: auth.userId,
+        updated_at: now,
+      })
+      .eq("id", payment.damaged_record_id)
+      .eq("status", "unresolved");
+
+    if (damagedErr) return { error: damagedErr.message };
+  }
+
   revalidatePath("/staff/fines");
+  revalidatePath("/staff/books/damaged");
   return { error: null };
 }
 

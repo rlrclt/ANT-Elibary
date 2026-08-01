@@ -49,6 +49,8 @@ export async function getMyFavoritesAction(): Promise<
       `,
     )
     .eq("user_id", user.id)
+    // ซ่อนหนังสือเก่า/ไม่ใช้งาน ออกจากรายการโปรดของสมาชิก
+    .eq("books.status", "active")
     .order("created_at", { ascending: false });
 
   if (error) return { data: null, error: error.message };

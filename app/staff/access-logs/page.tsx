@@ -1,5 +1,9 @@
 import { createClient } from "@/utils/supabase/server";
-import { getAccessLogsAction, getAccessStatsAction } from "./actions";
+import {
+  getAccessLogsAction,
+  getAccessStatsAction,
+  getLibraryHoursAction,
+} from "./actions";
 import { AccessLogClient } from "./components/access-log-client";
 
 export const metadata = {
@@ -9,7 +13,7 @@ export const metadata = {
 /**
  * หน้าการเข้าใช้ห้องสมุด (/staff/access-logs)
  * - layout.tsx จัด Header/Sidebar/Footer + auth guard (staff/admin) ให้แล้ว
- * - หน้านี้ตรวจ user อีกครั้ง แล้วดึงข้อมูลเริ่มต้น (logs + stats) ส่งให้ AccessLogClient
+ * - หน้านี้ตรวจ user อีกครั้ง แล้วดึงข้อมูลเริ่มต้น (logs + stats + เวลาเปิด-ปิด) ส่งให้ AccessLogClient
  */
 export default async function StaffAccessLogsPage() {
   const supabase = await createClient();
@@ -19,9 +23,10 @@ export default async function StaffAccessLogsPage() {
   if (!user) return null;
 
   // ดึงข้อมูลเริ่มต้นพร้อมกัน
-  const [logsResult, statsResult] = await Promise.all([
+  const [logsResult, statsResult, hoursResult] = await Promise.all([
     getAccessLogsAction(),
     getAccessStatsAction(),
+    getLibraryHoursAction(),
   ]);
 
   return (
@@ -35,6 +40,7 @@ export default async function StaffAccessLogsPage() {
           avgDurationMin: 0,
         }
       }
+      initialHours={hoursResult.data ?? []}
     />
   );
 }

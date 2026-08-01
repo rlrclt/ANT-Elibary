@@ -29,6 +29,12 @@ const TABLE_MAP = {
     userColId: "class_group_id",
     label: "กลุ่มเรียน",
   },
+  access_purposes: {
+    dbTable: "dropdown_access_purposes",
+    userCol: "purpose",
+    userColId: "purpose",
+    label: "วัตถุประสงค์การเข้าใช้",
+  },
 } as const;
 
 type TableType = keyof typeof TABLE_MAP;
@@ -43,6 +49,8 @@ export type DropdownOption = {
   department_id?: string;
   class_level_id?: string;
   academic_year?: string;
+  start_date?: string | null;
+  duration_years?: number;
 };
 
 // ---------- Helper: Verify Admin Role ----------
@@ -75,7 +83,7 @@ async function verifyAdmin() {
 
 // ---------- 1. getDropdownOptionsAction ----------
 /**
- * ดึงข้อมูลตัวเลือกทั้งหมดจากทั้ง 3 ตาราง
+ * ดึงข้อมูลตัวเลือกทั้งหมดจากทั้ง 5 ตาราง
  * ดึงทั้ง active และ inactive สำหรับจัดการ
  */
 export async function getDropdownOptionsAction(): Promise<{
@@ -83,6 +91,7 @@ export async function getDropdownOptionsAction(): Promise<{
   classLevels: DropdownOption[];
   roomLevels: DropdownOption[];
   classGroups: DropdownOption[];
+  accessPurposes: DropdownOption[];
   error: string | null;
 }> {
   const supabase = await createClient();
@@ -97,22 +106,25 @@ export async function getDropdownOptionsAction(): Promise<{
       classLevels: [],
       roomLevels: [],
       classGroups: [],
+      accessPurposes: [],
       error: "กรุณาเข้าสู่ระบบ",
     };
   }
 
   try {
-    const [deptRes, classRes, roomRes, groupRes] = await Promise.all([
+    const [deptRes, classRes, roomRes, groupRes, purposeRes] = await Promise.all([
       supabase.from("dropdown_departments").select("*").order("sort_order").order("name"),
       supabase.from("dropdown_class_levels").select("*").order("sort_order").order("name"),
       supabase.from("dropdown_room_levels").select("*").order("sort_order").order("name"),
       supabase.from("dropdown_class_groups").select("*").order("sort_order").order("code"),
+      supabase.from("dropdown_access_purposes").select("*").order("sort_order").order("name"),
     ]);
 
     if (deptRes.error) throw deptRes.error;
     if (classRes.error) throw classRes.error;
     if (roomRes.error) throw roomRes.error;
     if (groupRes.error) throw groupRes.error;
+    if (purposeRes.error) throw purposeRes.error;
 
     return {
       departments: deptRes.data || [],
@@ -122,6 +134,7 @@ export async function getDropdownOptionsAction(): Promise<{
         ...g,
         name: g.code,
       })),
+      accessPurposes: purposeRes.data || [],
       error: null,
     };
   } catch (err: any) {
@@ -131,6 +144,7 @@ export async function getDropdownOptionsAction(): Promise<{
       classLevels: [],
       roomLevels: [],
       classGroups: [],
+      accessPurposes: [],
       error: err.message || "ไม่สามารถดึงข้อมูลตัวเลือกได้",
     };
   }
@@ -147,7 +161,9 @@ export async function addDropdownOptionAction(
   visibleRoles: string[] = [],
   departmentId?: string,
   classLevelId?: string,
-  academicYear?: string
+  academicYear?: string,
+  startDate?: string | null,
+  durationYears?: number
 ): Promise<{ success: boolean; error: string | null }> {
   const trimmedName = name.trim();
   if (!trimmedName) {
@@ -181,6 +197,8 @@ export async function addDropdownOptionAction(
     insertData.department_id = departmentId;
     insertData.class_level_id = classLevelId;
     insertData.academic_year = academicYear.trim();
+    insertData.start_date = startDate || null;
+    insertData.duration_years = durationYears || 3;
   } else {
     insertData.name = trimmedName;
   }
@@ -216,7 +234,9 @@ export async function updateDropdownOptionAction(
   visibleRoles: string[] = [],
   departmentId?: string,
   classLevelId?: string,
-  academicYear?: string
+  academicYear?: string,
+  startDate?: string | null,
+  durationYears?: number
 ): Promise<{ success: boolean; error: string | null }> {
   const trimmedNewName = name.trim();
 
@@ -266,6 +286,8 @@ export async function updateDropdownOptionAction(
     updateData.department_id = departmentId;
     updateData.class_level_id = classLevelId;
     updateData.academic_year = academicYear.trim();
+    updateData.start_date = startDate || null;
+    updateData.duration_years = durationYears || 3;
   } else {
     updateData.name = trimmedNewName;
   }
@@ -323,20 +345,35 @@ export async function deleteDropdownOptionAction(
     };
   }
 
-  // เช็คว่ามีผู้ใช้งานใช้ค่านี้อยู่ในตาราง users หรือไม่ผ่าน custom UUID keys (department_id, class_level_id, room_level_id)
-  const { count, error: countError } = await supabase
-    .from("users")
-    .select("*", { count: "exact", head: true })
-    .eq(config.userColId, id);
+  // เช็คว่ามีผู้ใช้งานใช้ค่านี้อยู่ในระบบหรือไม่
+  // - ตารางอื่น: ผ่าน FK ใน users (department_id, class_level_id, room_level_id)
+  // - access_purposes: ผ่าน room_access_logs.purpose (เก็บชื่อไว้เป็น TEXT)
+  let usageCount = 0;
 
-  if (countError) {
-    return { success: false, error: countError.message };
+  if (table === "access_purposes") {
+    const { count, error: countError } = await supabase
+      .from("room_access_logs")
+      .select("*", { count: "exact", head: true })
+      .eq("purpose", existingData.name);
+    if (countError) {
+      return { success: false, error: countError.message };
+    }
+    usageCount = count ?? 0;
+  } else {
+    const { count, error: countError } = await supabase
+      .from("users")
+      .select("*", { count: "exact", head: true })
+      .eq(config.userColId, id);
+    if (countError) {
+      return { success: false, error: countError.message };
+    }
+    usageCount = count ?? 0;
   }
 
-  if (count && count > 0) {
+  if (usageCount > 0) {
     return {
       success: false,
-      error: `ไม่สามารถลบได้ เนื่องจากตัวเลือกนี้กำลังถูกใช้งานโดยผู้ใช้จำนวน ${count} คน (แนะนำให้ใช้วิธีปิดสถานะการใช้งานแทน)`,
+      error: `ไม่สามารถลบได้ เนื่องจากตัวเลือกนี้กำลังถูกใช้งานแล้วจำนวน ${usageCount} รายการ (แนะนำให้ใช้วิธีปิดสถานะการใช้งานแทน)`,
     };
   }
 
