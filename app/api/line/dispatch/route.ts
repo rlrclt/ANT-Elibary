@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   dispatchLineNotifications,
   checkDueDateReminders,
+  checkPendingReturnReminders,
 } from "@/utils/line-notify";
 
 /**
  * GET /api/line/dispatch
  * ส่ง LINE notification ที่ค้างอยู่ใน notification_queue (status='pending')
  * + ตรวจหนังสือใกล้ครบกำหนดคืนและ enqueue reminder
+ * + ตรวจคำขอกลืนคืนที่ค้างเกิน 7 วัน → แจ้งเตือนเจ้าหน้าที่
  *
  * ใช้สำหรับ Vercel Cron (เรียกทุก 1 นาที ผ่าน vercel.json crons config)
  * หรือ external cron service ที่ส่ง Authorization: Bearer <CRON_SECRET>
@@ -23,7 +25,8 @@ import {
  *   3. ถ้า after() ส่งไม่สำเร็จ → คง pending ให้ cron ดึงมา retry
  *   4. cron เรียก endpoint นี้:
  *      a. checkDueDateReminders() — ตรวจ due_date ใกล้ครบ → enqueue reminder
- *      b. dispatchLineNotifications() — ดึง pending มาส่งใหม่
+ *      b. checkPendingReturnReminders() — ตรวจคำขอกลืนคืนค้างเกิน 7 วัน → แจ้ง staff
+ *      c. dispatchLineNotifications() — ดึง pending มาส่งใหม่
  */
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
@@ -49,7 +52,15 @@ export async function GET(req: NextRequest) {
       console.error("[line-dispatch] reminder check error:", err);
     }
 
-    // 2. ส่ง LINE notification ที่ค้างอยู่ (รวม reminder ที่เพิ่ง enqueue)
+    // 2. ตรวจคำขอกลืนคืนค้างเกิน 7 วัน → แจ้งเจ้าหน้าที่ (best-effort)
+    let pendingReturns = { enqueued: 0 };
+    try {
+      pendingReturns = await checkPendingReturnReminders();
+    } catch (err) {
+      console.error("[line-dispatch] pending return check error:", err);
+    }
+
+    // 3. ส่ง LINE notification ที่ค้างอยู่ (รวม reminder ที่เพิ่ง enqueue)
     const result = await dispatchLineNotifications();
 
     return NextResponse.json({
@@ -57,6 +68,7 @@ export async function GET(req: NextRequest) {
       sent: result.sent,
       failed: result.failed,
       remindersEnqueued: reminders.enqueued,
+      pendingReturnRemindersEnqueued: pendingReturns.enqueued,
     });
   } catch (err: any) {
     console.error("[line-dispatch] error:", err);

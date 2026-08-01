@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 
 /**
  * หน้าเช็คอิน/เช็คเอาท์ห้องสมุดสำหรับสมาชิก (/member/access)
- * - ตรวจ auth: ถ้า !user → /login, ถ้า staff/admin → /staff
+ * - ตรวจ auth: ถ้า !user → /login
  * - ดึงข้อมูลเริ่มต้น: active log + ประวัติการเข้าใช้
  * - ส่งให้ <AccessClient /> เรนเดอร์ UI
  */
@@ -28,17 +28,6 @@ export default async function MemberAccessPage() {
   } = await supabase.auth.getUser();
 
   if (!user) redirect("/login");
-
-  // ตรวจ role — ถ้า staff/admin → ส่งไป /staff
-  const { data: profile } = await supabase
-    .from("users")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (profile && (profile.role === "staff" || profile.role === "admin")) {
-    redirect("/staff");
-  }
 
   // ดึงข้อมูลเริ่มต้นพร้อมกัน
   const [activeResult, historyResult, purposesResult, hoursResult] =

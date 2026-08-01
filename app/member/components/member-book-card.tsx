@@ -84,7 +84,7 @@ export function MemberBookCard({
       {/* ปกหนังสือ */}
       <div
         className="relative w-full rounded-md overflow-hidden shadow-sm border border-gray-200 dark:border-border-base mb-2 bg-gray-100 dark:bg-card-bg"
-        style={{ aspectRatio: "1 / 1.4" }}
+        style={{ aspectRatio: "1 / 1.35" }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img

@@ -24,8 +24,9 @@ export const metadata: Metadata = {
 const themeInitScript = `
 (function() {
   try {
-    document.documentElement.classList.remove('dark');
-    localStorage.setItem('ant-theme', 'light');
+    var stored = localStorage.getItem('ant-theme');
+    var theme = stored === 'dark' ? 'dark' : 'light';
+    if (theme === 'dark') document.documentElement.classList.add('dark');
   } catch (e) {}
 })();
 `;
@@ -44,7 +45,7 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body className="min-h-full flex flex-col bg-page-bg text-slate-800 font-sans overflow-x-hidden transition-colors duration-300">
+      <body className="min-h-full flex flex-col bg-page-bg text-slate-800 dark:text-slate-200 font-sans overflow-x-hidden transition-colors duration-300">
         <ThemeProvider>{children}</ThemeProvider>
         {/* Phosphor Icons — โหลดที่ body ท้ายหน้า เพื่อไม่บล็อก render */}
         <Script

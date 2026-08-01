@@ -28,17 +28,29 @@ const EXTENSION_DAYS = 7;
 // จำนวนครั้งต่ออายุสูงสุด
 const MAX_EXTENSION = 1;
 
+// ---------- Constants (การอัปโหลดรูป) ----------
+const MAX_RETURN_PHOTO_SIZE = 5 * 1024 * 1024; // 5MB
+const ALLOWED_RETURN_PHOTO_MIME = ["image/jpeg", "image/png", "image/webp"];
+const RETURN_PHOTO_EXT: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+};
+
 // ---------- Types ----------
 export type MemberBorrowRecord = {
   id: string;
   borrowed_at: string;
   due_date: string;
   returned_at: string | null;
-  status: "borrowing" | "returned" | "overdue" | "lost";
+  status: "borrowing" | "returned" | "overdue" | "lost" | "pending_return";
   fine_amount: number;
   fine_reason: string | null;
   remark: string | null;
   extension_count: number;
+  return_requested_at: string | null;
+  return_photo_url: string | null;
+  return_condition: "normal" | "slight_damage" | "damaged" | null;
   book_copy: {
     barcode: string;
     condition: string | null;
@@ -97,7 +109,8 @@ export async function getMyBorrowsAction(): Promise<ActionResult<MemberBorrowRec
     .select(
       `
       id, borrowed_at, due_date, returned_at, status, fine_amount,
-      fine_reason, remark, extension_count,
+      fine_reason, remark, extension_count, return_requested_at,
+      return_photo_url, return_condition,
       book_copies!borrow_records_book_copy_id_fkey (
         barcode, condition,
         books!book_copies_book_id_fkey (
@@ -122,6 +135,9 @@ export async function getMyBorrowsAction(): Promise<ActionResult<MemberBorrowRec
     fine_reason: r.fine_reason ?? null,
     remark: r.remark ?? null,
     extension_count: r.extension_count ?? 0,
+    return_requested_at: r.return_requested_at ?? null,
+    return_photo_url: r.return_photo_url ?? null,
+    return_condition: r.return_condition ?? null,
     book_copy: r.book_copies
       ? {
           barcode: r.book_copies.barcode,
@@ -194,6 +210,9 @@ export async function getMyActiveBorrowsAction(): Promise<
     fine_reason: r.fine_reason ?? null,
     remark: r.remark ?? null,
     extension_count: r.extension_count ?? 0,
+    return_requested_at: r.return_requested_at ?? null,
+    return_photo_url: r.return_photo_url ?? null,
+    return_condition: r.return_condition ?? null,
     book_copy: r.book_copies
       ? {
           barcode: r.book_copies.barcode,
@@ -470,10 +489,61 @@ export async function memberBorrowAction(
   return { error: null, recordId: record.id, bookTitle };
 }
 
-// ---------- 5. memberReturnAction ----------
+// ---------- 5. uploadReturnPhotoAction ----------
 /**
- * สมาชิกคืนหนังสือด้วยตนเองผ่านบาร์โค้ด
- * คำนวณค่าปรับอัตโนมัติหากคืนเกินกำหนด (5 บาท/วัน)
+ * อัปโหลดรูปถ่ายหนังสือตอนส่งคำขอกลืนคืน (เก็บใน bucket media)
+ * ขนาดสูงสุด 5MB รองรับ jpeg/png/webp
+ */
+export async function uploadReturnPhotoAction(
+  formData: FormData,
+): Promise<{ error: string | null; url: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "กรุณาเข้าสู่ระบบ", url: null };
+
+  const file = formData.get("photo") as File | null;
+  if (!file || !(file instanceof File) || file.size === 0) {
+    return { error: "กรุณาเลือกไฟล์รูปถ่ายหนังสือ", url: null };
+  }
+
+  if (!ALLOWED_RETURN_PHOTO_MIME.includes(file.type)) {
+    return { error: "รองรับเฉพาะไฟล์ภาพ JPEG, PNG และ WEBP เท่านั้น", url: null };
+  }
+
+  if (file.size > MAX_RETURN_PHOTO_SIZE) {
+    return { error: "ขนาดไฟล์ต้องไม่เกิน 5MB", url: null };
+  }
+
+  const ext = RETURN_PHOTO_EXT[file.type] ?? "jpg";
+  const filePath = `return-photo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("media")
+    .upload(filePath, file, {
+      contentType: file.type,
+      cacheControl: "3600",
+      upsert: false,
+    });
+
+  if (uploadError) {
+    return { error: uploadError.message, url: null };
+  }
+
+  const { data: publicUrlData } = supabase.storage
+    .from("media")
+    .getPublicUrl(filePath);
+
+  return { error: null, url: publicUrlData.publicUrl };
+}
+
+// ---------- 6. memberReturnAction ----------
+/**
+ * สมาชิกส่งคำขอกลืนหนังสือด้วยตนเอง (ถ่ายรูป + เลือกสภาพ)
+ * - ไม่คืนทันที: ตั้งสถานะ pending_return รอเจ้าหน้าที่ตรวจสอบภายใน 7 วัน
+ * - เจ้าหน้าที่จะตรวจสอบรูป/สภาพแล้วอนุมัติหรือปฏิเสธ + ตั้งค่าปรับเอง
+ * - ยังไม่เปลี่ยนสถานะ book_copy และยังไม่คำนวณค่าปรับตอนนี้
  */
 export async function memberReturnAction(
   formData: FormData,
@@ -490,6 +560,20 @@ export async function memberReturnAction(
 
   const barcode = String(formData.get("barcode") ?? "").trim();
   const recordId = String(formData.get("record_id") ?? "").trim();
+  const returnCondition = String(formData.get("return_condition") ?? "").trim();
+  const returnPhotoUrl = String(formData.get("return_photo_url") ?? "").trim();
+
+  // ตรวจสอบข้อมูลที่จำเป็น
+  if (!["normal", "slight_damage", "damaged"].includes(returnCondition)) {
+    return { error: "กรุณาเลือกสภาพหนังสือ", fineAmount: 0, bookTitle: null };
+  }
+  if (!returnPhotoUrl) {
+    return {
+      error: "กรุณาถ่ายรูปหนังสือก่อนส่งคำขอกลืนคืน",
+      fineAmount: 0,
+      bookTitle: null,
+    };
+  }
 
   // ตรวจสถานะสมาชิก — บัญชีที่ถูกระงับ/ไม่ active คืนหนังสือเองไม่ได้
   const { data: member, error: mErr } = await supabase
@@ -542,7 +626,7 @@ export async function memberReturnAction(
     // (c) หา borrow_record WHERE book_copy_id=copy.id AND user_id=current AND returned_at IS NULL
     const { data: record, error: rErr } = await supabase
       .from("borrow_records")
-      .select("id, due_date")
+      .select("id, status")
       .eq("book_copy_id", copy.id)
       .eq("user_id", user.id)
       .is("returned_at", null)
@@ -558,12 +642,12 @@ export async function memberReturnAction(
 
     targetRecordId = record.id;
   } else {
-    // คืนผ่าน record_id — ดึงข้อมูลเพื่อคำนวณค่าปรับ + หา copy id
+    // คืนผ่าน record_id — ดึงข้อมูลเพื่อหา copy id
     const { data: record, error: rErr } = await supabase
       .from("borrow_records")
       .select(
         `
-        id, due_date, book_copy_id,
+        id, book_copy_id,
         book_copies!borrow_records_book_copy_id_fkey (
           barcode,
           books!book_copies_book_id_fkey ( title )
@@ -587,10 +671,10 @@ export async function memberReturnAction(
     bookTitle = (record as any).book_copies?.books?.title ?? "ไม่ระบุชื่อ";
   }
 
-  // ดึง due_date ของรายการเพื่อคำนวณค่าปรับ
+  // ดึงสถานะปัจจุบันของรายการ
   const { data: fullRecord, error: frErr } = await supabase
     .from("borrow_records")
-    .select("id, due_date, status")
+    .select("id, status")
     .eq("id", targetRecordId)
     .maybeSingle();
 
@@ -598,113 +682,39 @@ export async function memberReturnAction(
   if (!fullRecord)
     return { error: "ไม่พบรายการยืม", fineAmount: 0, bookTitle: null };
 
-  // (d) คำนวณค่าปรับ: ดึง fine_settings จาก DB
-  const now = new Date();
-  const due = new Date(fullRecord.due_date);
-  const diffMs = now.getTime() - due.getTime();
-  const daysOverdue = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  // ดึง fine_settings (active row เดียว)
-  let fineAmount = 0;
-  let finalFineReason: string | null = null;
-
-  const { data: fineSettings } = await supabase
-    .from("fine_settings")
-    .select("overdue_rate, overdue_max_days")
-    .eq("is_active", true)
-    .maybeSingle();
-
-  if (fineSettings) {
-    const overdueRate = Number(fineSettings.overdue_rate ?? 5);
-    const maxDays = Number(fineSettings.overdue_max_days ?? 30);
-
-    if (daysOverdue > 0) {
-      // ถ้าเกิน max_days → ปรับเท่าราคาเล่ม (ดึงจาก books)
-      if (daysOverdue >= maxDays) {
-        // ดึงราคาเล่ม — ถ้าไม่มีใช้ overdueRate * maxDays
-        const { data: bookData } = await supabase
-          .from("borrow_records")
-          .select(
-            "book_copies!borrow_records_book_copy_id_fkey ( books ( id ) )",
-          )
-          .eq("id", targetRecordId)
-          .maybeSingle();
-
-        let bookPrice = overdueRate * maxDays; // fallback
-        // ถ้ามี books table มี price column — ดึงมา
-        const bookId = (bookData as any)?.book_copies?.books?.id;
-        if (bookId) {
-          const { data: priceRow } = await supabase
-            .from("books")
-            .select("price")
-            .eq("id", bookId)
-            .maybeSingle();
-          if (priceRow?.price) bookPrice = Number(priceRow.price);
-        }
-        fineAmount = bookPrice;
-        finalFineReason = "overdue";
-      } else {
-        fineAmount = daysOverdue * overdueRate;
-        finalFineReason = "overdue";
-      }
-    }
-  } else {
-    // fallback ถ้าไม่มี fine_settings
-    if (daysOverdue > 0) {
-      fineAmount = daysOverdue * FINE_PER_DAY;
-      finalFineReason = "overdue";
-    }
+  // กันการส่งซ้ำ — ถ้าอยู่ในสถานะ pending_return แล้ว
+  if (fullRecord.status === "pending_return") {
+    return {
+      error: "ได้ส่งคำขอกลืนคืนแล้ว รอเจ้าหน้าที่ตรวจสอบ",
+      fineAmount: 0,
+      bookTitle: null,
+    };
   }
 
-  // (e) UPDATE borrow_record
+  // เฉพาะ borrowing / overdue เท่านั้นที่ส่งคำขอกลืนได้
+  if (fullRecord.status !== "borrowing" && fullRecord.status !== "overdue") {
+    return {
+      error: "รายการนี้ไม่สามารถส่งคำขอกลืนคืนได้",
+      fineAmount: 0,
+      bookTitle: null,
+    };
+  }
+
+  // (e) UPDATE borrow_record → ตั้งสถานะ pending_return (ยังไม่คืนจริง)
+  const now = new Date();
   const { error: updErr } = await supabase
     .from("borrow_records")
     .update({
-      returned_at: now.toISOString(),
-      status: "returned",
-      fine_amount: fineAmount,
-      fine_reason: finalFineReason,
+      status: "pending_return",
+      return_requested_at: now.toISOString(),
+      return_photo_url: returnPhotoUrl,
+      return_condition: returnCondition,
     })
     .eq("id", targetRecordId);
 
   if (updErr) return { error: updErr.message, fineAmount: 0, bookTitle: null };
 
-  // (f) UPDATE book_copy status → available
-  if (copyId) {
-    const { error: copyErr } = await supabase
-      .from("book_copies")
-      .update({ status: "available" })
-      .eq("id", copyId);
-    if (copyErr) return { error: copyErr.message, fineAmount: 0, bookTitle: null };
-  }
-
-  // (g) ถ้ามีค่าปรับ → สร้าง fine_payment + บวก fine_balance
-  if (fineAmount > 0) {
-    const { data: member } = await supabase
-      .from("users")
-      .select("fine_balance")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    const currentFine = Number(member?.fine_balance ?? 0);
-    await supabase
-      .from("users")
-      .update({ fine_balance: currentFine + fineAmount })
-      .eq("id", user.id);
-
-    // สร้าง fine_payment record (status: pending)
-    await supabase.from("fine_payments").insert({
-      user_id: user.id,
-      borrow_record_id: targetRecordId,
-      fine_type: finalFineReason ?? "overdue",
-      amount: fineAmount,
-      description: `ค่าปรับ${finalFineReason === "overdue" ? `ล่าช้า ${daysOverdue} วัน` : ""}`,
-      payment_method: "transfer",
-      status: "pending",
-    });
-  }
-
-  // (h) บันทึก Notification Queue + ส่ง LINE แบบ realtime ผ่าน after()
+  // (f) แจ้งเตือน LINE สมาชิก + เจ้าหน้าที่ ผ่าน after()
   const { data: memberInfo } = await supabase
     .from("users")
     .select("full_name")
@@ -723,49 +733,71 @@ export async function memberReturnAction(
     copyBarcode = (copyData as any)?.barcode ?? "-";
   }
 
-  // ดึงวันที่ยืม
-  const { data: borrowData } = await supabase
-    .from("borrow_records")
-    .select("borrowed_at")
-    .eq("id", targetRecordId)
-    .maybeSingle();
-  const borrowDateStr = borrowData?.borrowed_at
-    ? new Date(borrowData.borrowed_at).toLocaleDateString("th-TH", {
-        day: "2-digit",
-        month: "long",
-        year: "numeric",
-      })
-    : "-";
-  const returnDateStr = now.toLocaleDateString("th-TH", {
+  const requestDateStr = now.toLocaleDateString("th-TH", {
     day: "2-digit",
     month: "long",
     year: "numeric",
   });
 
-  const queueId = await enqueueLineNotification(user.id, {
+  const conditionLabel: Record<string, string> = {
+    normal: "ปกติ",
+    slight_damage: "ชำรุดเล็กน้อย",
+    damaged: "ชำรุดเสียหาย",
+  };
+
+  // แจ้งสมาชิก
+  const memberQueueId = await enqueueLineNotification(user.id, {
     template: "return",
-    title: "คืนหนังสือสำเร็จ",
-    body: `คุณคืน "${bookTitle}" เรียบร้อยแล้ว`,
+    title: "ส่งคำขอกลืนคืนแล้ว",
+    body: `คำขอกลืนคืน "${bookTitle}" ถูกส่งแล้ว (สภาพ: ${conditionLabel[returnCondition]}) รอเจ้าหน้าที่ตรวจสอบ`,
     action_url: "/member/loans",
     icon: "book",
     category: "loan",
     member_name: memberName,
     book_title: bookTitle ?? "หนังสือ",
     book_copy_no: copyBarcode,
-    borrow_date: borrowDateStr,
-    return_date: returnDateStr,
-    fine_amount: fineAmount,
+    borrow_date: requestDateStr,
+    return_date: requestDateStr,
+    fine_amount: 0,
   });
 
-  if (queueId) {
-    after(() => sendQueuedLineNotification(queueId));
+  if (memberQueueId) {
+    after(() => sendQueuedLineNotification(memberQueueId));
+  }
+
+  // แจ้งเจ้าหน้าที่ (role staff/admin) ว่ามีคำขอกลืนรอตรวจสอบ
+  const { data: staffUsers } = await supabase
+    .from("users")
+    .select("id")
+    .in("role", ["staff", "admin"])
+    .not("line_user_id", "is", null);
+
+  for (const staff of staffUsers ?? []) {
+    const queueId = await enqueueLineNotification(staff.id, {
+      template: "return",
+      title: "มีคำขอกลืนคืนรอตรวจสอบ",
+      body: `สมาชิก "${memberName}" ส่งคำขอกลืนคืน "${bookTitle}" (สภาพ: ${conditionLabel[returnCondition]})`,
+      action_url: "/staff/loans/returns",
+      icon: "bell",
+      category: "loan",
+      member_name: memberName,
+      book_title: bookTitle ?? "หนังสือ",
+      book_copy_no: copyBarcode,
+      borrow_date: requestDateStr,
+      return_date: requestDateStr,
+      fine_amount: 0,
+    });
+
+    if (queueId) {
+      after(() => sendQueuedLineNotification(queueId));
+    }
   }
 
   revalidatePath("/member/loans");
-  return { error: null, fineAmount, bookTitle };
+  return { error: null, fineAmount: 0, bookTitle };
 }
 
-// ---------- 6. memberExtendAction ----------
+// ---------- 7. memberExtendAction ----------
 /**
  * สมาชิกต่ออายุการยืมเอง (1 ครั้ง, +7 วัน)
  */

@@ -1,5 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { getOldCutoffYear } from "@/utils/book-age";
+import { PLAN_LIMITS } from "@/utils/server-limits";
+import { formatBytes, usagePercent } from "@/utils/format-bytes";
 import { PhosphorIcon } from "../components/phosphor-icon";
 import { PrintButton } from "../components/print-button";
 
@@ -42,6 +44,40 @@ export default async function StaffDashboardPage() {
       .select("*", { count: "exact", head: true })
       .is("check_out_at", null),
   ]);
+
+  // ดึงขนาดการใช้งานเซิร์ฟเวอร์ (DB + Storage) — เรียก RPC, try-catch เผื่อยังไม่รัน migration
+  let databaseSize: number | null = null;
+  let storageBytes: number | null = null;
+  try {
+    const [dbRes, storageRes] = await Promise.all([
+      supabase.rpc("fn_get_database_size"),
+      supabase.rpc("fn_get_storage_usage"),
+    ]);
+    if (!dbRes.error) databaseSize = dbRes.data as number;
+    if (!storageRes.error && Array.isArray(storageRes.data)) {
+      storageBytes = (storageRes.data as { bytes?: number }[]).reduce(
+        (sum, b) => sum + Number(b.bytes ?? 0),
+        0,
+      );
+    }
+  } catch {
+    // ปล่อยค่า null — แสดงข้อความให้รัน migration
+  }
+
+  const serverUsage = [
+    {
+      label: "ฐานข้อมูล",
+      used: databaseSize,
+      limit: PLAN_LIMITS.databaseBytes,
+      icon: "database",
+    },
+    {
+      label: "Storage",
+      used: storageBytes,
+      limit: PLAN_LIMITS.storageBytes,
+      icon: "hard-drives",
+    },
+  ];
 
   const stats = [
     {
@@ -144,6 +180,58 @@ export default async function StaffDashboardPage() {
             </div>
           </div>
         ))}
+      </section>
+
+      {/* Server usage — สรุปขนาด DB/Storage เทียบโควตา */}
+      <section className="bg-white dark:bg-card-bg rounded-xl shadow-sm border border-gray-100 dark:border-border-base p-5 transition-colors print:hidden">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-5 bg-meb-green rounded-full" />
+            <h2 className="text-lg font-bold text-forest dark:text-slate-100">
+              การใช้งานเซิร์ฟเวอร์
+            </h2>
+          </div>
+          <a
+            href="/staff/server"
+            className="text-sm font-medium text-meb-green hover:text-meb-hover flex items-center gap-1"
+          >
+            ดูรายละเอียด <PhosphorIcon name="arrow-right" weight="bold" />
+          </a>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {serverUsage.map((u) => {
+            const percent = usagePercent(u.used, u.limit);
+            const over = (u.used ?? 0) > u.limit;
+            return (
+              <div key={u.label} className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-meb-light flex items-center justify-center text-meb-green text-lg shrink-0">
+                  <PhosphorIcon name={u.icon} weight="fill" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-sm font-medium text-forest dark:text-slate-100">{u.label}</p>
+                    <span className={`text-sm font-bold ${over ? "text-price-red" : "text-meb-green"}`}>
+                      {u.used === null ? "—" : `${formatBytes(u.used)} (${percent}%)`}
+                    </span>
+                  </div>
+                  <div className="w-full h-2 bg-gray-100 dark:bg-white/10 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${over ? "bg-price-red" : "bg-meb-green"}`}
+                      style={{ width: `${Math.max(u.used === null ? 0 : percent, 3)}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    {u.used === null
+                      ? "รัน migration 027 แล้วลองใหม่"
+                      : over
+                        ? `เกินโควตา ${formatBytes(u.used - u.limit)}`
+                        : `เหลือ ${formatBytes(u.limit - u.used)} / ทั้งหมด ${formatBytes(u.limit)}`}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </section>
 
       {/* Quick actions */}

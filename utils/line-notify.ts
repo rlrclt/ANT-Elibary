@@ -1099,6 +1099,79 @@ export async function checkDueDateReminders(): Promise<{
 }
 
 // ==========================================================
+// Reminder: คำขอกลืนคืนค้างเกิน 7 วัน (เรียกจาก cron)
+// ==========================================================
+
+/**
+ * checkPendingReturnReminders — ตรวจคำขอกลืนคืน (status='pending_return')
+ * ที่ค้างเกิน 7 วันแล้ว แจ้งเตือนเจ้าหน้าที่ผ่าน LINE ว่ามีรายการที่ต้องรีบตรวจ
+ * เรียกจาก cron (/api/line/dispatch)
+ */
+export async function checkPendingReturnReminders(): Promise<{
+  enqueued: number;
+}> {
+  const admin = createAdminClient();
+
+  const now = new Date();
+  const sevenDaysAgo = new Date(now);
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  const { data: borrows, error } = await admin
+    .from("borrow_records")
+    .select(
+      `id, user_id, book_copy_id, return_requested_at, return_condition,
+       users ( full_name ),
+       book_copies ( barcode, books ( title ) )`,
+    )
+    .eq("status", "pending_return")
+    .lte("return_requested_at", sevenDaysAgo.toISOString());
+
+  if (error) {
+    console.error("[line-notify] pending return query error:", error.message);
+    return { enqueued: 0 };
+  }
+
+  const rows = (borrows ?? []) as any[];
+  if (rows.length === 0) return { enqueued: 0 };
+
+  // เอาจำนวนที่ค้างเกิน 7 วัน เพื่อส่งข้อความสรุปเดียวให้เจ้าหน้าที่
+  const { data: staffUsers } = await admin
+    .from("users")
+    .select("id")
+    .in("role", ["staff", "admin"])
+    .not("line_user_id", "is", null);
+
+  let enqueued = 0;
+
+  for (const staff of staffUsers ?? []) {
+    const queueId = await enqueueLineNotification(
+      staff.id,
+      {
+        template: "return",
+        title: `มีคำขอกลืนคืนค้าง ${rows.length} รายการ`,
+        body: `รายการคำขอกลืนคืนค้างเกิน 7 วันแล้ว กรุณาตรวจสอบโดยเร็ว`,
+        action_url: "/staff/loans/returns",
+        icon: "alarm",
+        category: "loan",
+        member_name: rows[0]?.users?.full_name ?? "-",
+        book_title: rows[0]?.book_copies?.books?.title ?? "หนังสือ",
+        book_copy_no: rows[0]?.book_copies?.barcode ?? "-",
+        borrow_date: now.toLocaleDateString("th-TH"),
+        return_date: now.toLocaleDateString("th-TH"),
+        fine_amount: 0,
+      },
+      undefined,
+    );
+
+    if (queueId) {
+      enqueued++;
+    }
+  }
+
+  return { enqueued };
+}
+
+// ==========================================================
 // Legacy helpers (ใช้สำหรับกรณี inline ที่ไม่ผ่าน queue)
 // ==========================================================
 

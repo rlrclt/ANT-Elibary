@@ -12,8 +12,7 @@ export const metadata = {
  * - รับ book id จาก query param
  * - ดึงข้อมูลหนังสือ + เล่มลูกที่พร้อมยืม
  * - ส่งให้ BorrowClient แสดงหน้าจอยืม
- */
-export default async function BorrowPage({
+ */export default async function BorrowPage({
   searchParams,
 }: {
   searchParams: Promise<{ book?: string }>;
@@ -55,10 +54,6 @@ export default async function BorrowPage({
     .select("full_name, user_id_code, borrow_limit, status, fine_balance, role")
     .eq("id", user.id)
     .maybeSingle();
-
-  if (profile && (profile.role === "staff" || profile.role === "admin")) {
-    redirect("/staff");
-  }
 
   // นับการยืมปัจจุบัน
   const { count: activeBorrows } = await supabase

@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { PhosphorIcon } from "./phosphor-icon";
-import { LogoutOverlay } from "./logout-overlay";
 
 type StaffSidebarProps = {
   fullName: string;
@@ -34,7 +33,6 @@ export function StaffSidebar({
 
   // สถานะหุบ/แสดง — อ่านจาก localStorage
   const [collapsed, setCollapsed] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("staff-sidebar-collapsed");
@@ -74,6 +72,7 @@ export function StaffSidebar({
       icon: "arrows-left-right",
       items: [
         { href: "/staff/loans", label: "ยืม-คืน", icon: "hand-arrow-up" },
+        { href: "/staff/loans/returns", label: "ตรวจสอบการคืน", icon: "shield-check" },
         { href: "/staff/fines", label: "ค่าปรับ + QR", icon: "currency-circle-dollar" },
       ],
     },
@@ -99,6 +98,7 @@ export function StaffSidebar({
       group: "ระบบ",
       icon: "sliders",
       items: [
+        { href: "/staff/server", label: "การใช้งานเซิร์ฟเวอร์", icon: "database" },
         ...(role === "admin"
           ? [{ href: "/staff/settings/dropdowns", label: "จัดการข้อมูลตัวเลือก", icon: "sliders" }]
           : []),
@@ -110,7 +110,6 @@ export function StaffSidebar({
     href === "/staff" ? pathname === "/staff" : pathname.startsWith(href);
 
   return (
-    <>
     <aside className={`hidden md:block shrink-0 transition-all duration-300 print:hidden ${collapsed ? "w-16" : "w-64"}`}>
       <div className="bg-white dark:bg-card-bg rounded-xl shadow-sm border border-gray-100 dark:border-border-base overflow-hidden sticky top-[84px] flex flex-col max-h-[calc(100vh-104px)] transition-colors">
         {/* Quick User Info */}
@@ -190,27 +189,6 @@ export function StaffSidebar({
           })}
         </nav>
 
-        {/* Settings + Logout */}
-        <div className="p-2 border-t border-gray-100 dark:border-border-base shrink-0 transition-colors">
-          <Link
-            href="/staff/settings"
-            title={collapsed ? "ตั้งค่าบัญชี" : undefined}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 font-medium transition-colors ${collapsed ? "justify-center" : ""}`}
-          >
-            <PhosphorIcon name="gear" className="text-xl shrink-0" />
-            {!collapsed && <span className="text-sm">ตั้งค่าบัญชี</span>}
-          </Link>
-          <button
-            type="button"
-            onClick={() => setLoggingOut(true)}
-            title={collapsed ? "ออกจากระบบ" : undefined}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-price-red hover:bg-red-50 font-medium transition-colors ${collapsed ? "justify-center" : ""}`}
-          >
-            <PhosphorIcon name="sign-out" className="text-xl shrink-0" />
-            {!collapsed && <span className="text-sm">ออกจากระบบ</span>}
-          </button>
-        </div>
-
         {/* ปุ่มหุบ/แสดง sidebar — ไว้ล่างสุด */}
         <div className="p-2 border-t border-gray-100 dark:border-border-base shrink-0">
           <button
@@ -231,7 +209,5 @@ export function StaffSidebar({
         </div>
       </div>
     </aside>
-    <LogoutOverlay active={loggingOut} />
-    </>
   );
 }

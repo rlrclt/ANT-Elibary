@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 
 /**
  * หน้ายืม-คืนหนังสือสำหรับสมาชิก (/member/loans)
- * - ตรวจ auth: ถ้า !user → /login, ถ้า staff/admin → /staff
+ * - ตรวจ auth: ถ้า !user → /login
  * - ดึง profile (borrow_limit, fine_balance)
  * - ดึงข้อมูลเริ่มต้น: ประวัติยืมทั้งหมด + รายการยืมปัจจุบัน + สรุปค่าปรับ
  * - ส่งให้ <LoanTabs /> เรนเดอร์ UI 3 แท็บ
@@ -29,16 +29,12 @@ export default async function MemberLoansPage() {
 
   if (!user) redirect("/login");
 
-  // ตรวจ role — ถ้า staff/admin → ส่งไป /staff
+  // ดึง profile (borrow_limit, fine_balance)
   const { data: profile } = await supabase
     .from("users")
     .select("role, borrow_limit, fine_balance")
     .eq("id", user.id)
     .maybeSingle();
-
-  if (profile && (profile.role === "staff" || profile.role === "admin")) {
-    redirect("/staff");
-  }
 
   // ดึงข้อมูลเริ่มต้นพร้อมกัน
   const [borrowsResult, activeResult, finesResult] = await Promise.all([

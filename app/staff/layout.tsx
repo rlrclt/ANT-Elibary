@@ -68,6 +68,7 @@ export default async function StaffLayout({
         fullName={profile.full_name}
         userIdCode={profile.user_id_code}
         avatarUrl={profile.avatar_url}
+        role={profile.role}
       />
 
       {/* Mobile nav — แทน sidebar บนมือถือ */}
@@ -108,6 +109,12 @@ export default async function StaffLayout({
             className="px-4 py-1.5 text-gray-600 hover:bg-gray-50 font-medium text-sm rounded-full border border-gray-200 flex items-center gap-1.5 transition-colors shrink-0"
           >
             <PhosphorIcon name="chart-pie-slice" /> รายงานยืม-คืน
+          </Link>
+          <Link
+            href="/staff/server"
+            className="px-4 py-1.5 text-gray-600 hover:bg-gray-50 font-medium text-sm rounded-full border border-gray-200 flex items-center gap-1.5 transition-colors shrink-0"
+          >
+            <PhosphorIcon name="database" /> เซิร์ฟเวอร์
           </Link>
         </div>
       </nav>

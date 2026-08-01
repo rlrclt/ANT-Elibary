@@ -6,9 +6,10 @@ import { Modal } from "../../../components/modal";
 import {
   memberExtendAction,
   memberReturnAction,
+  uploadReturnPhotoAction,
   type MemberBorrowRecord,
 } from "../actions";
-import { rateBookAction, getMyRatingAction } from "../../favorites/actions";
+import { rateBookAction } from "../../favorites/actions";
 
 type MyBorrowsProps = {
   active: MemberBorrowRecord[];
@@ -42,6 +43,14 @@ function getRemainingDays(dueDate: string): number {
 
 // สถานะ badge
 function StatusBadge({ status, dueDate }: { status: string; dueDate: string }) {
+  if (status === "pending_return") {
+    return (
+      <span className="px-2.5 py-1 bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 font-bold rounded-full border border-blue-100 dark:border-blue-900/30 flex items-center gap-1 text-xs">
+        <PhosphorIcon name="hourglass-medium" weight="fill" />
+        รอตรวจสอบ
+      </span>
+    );
+  }
   if (status === "overdue" || (status === "borrowing" && getRemainingDays(dueDate) < 0)) {
     return (
       <span className="px-2.5 py-1 bg-red-50 dark:bg-red-950/20 text-price-red font-bold rounded-full border border-red-100 dark:border-red-900/30 flex items-center gap-1 text-xs">
@@ -111,6 +120,13 @@ export function MyBorrows({ active, history, onRefresh }: MyBorrowsProps) {
   // state สำหรับ modal คืนหนังสือ
   const [returnModal, setReturnModal] = useState<MemberBorrowRecord | null>(null);
   const [returnPending, startReturnTransition] = useTransition();
+  const [returnCondition, setReturnCondition] = useState<
+    "normal" | "slight_damage" | "damaged" | ""
+  >("");
+  const [returnPhoto, setReturnPhoto] = useState<File | null>(null);
+  const [returnPhotoPreview, setReturnPhotoPreview] = useState<string | null>(null);
+  const [returnUploading, setReturnUploading] = useState(false);
+  const [returnError, setReturnError] = useState<string | null>(null);
 
   // state สำหรับ popup ให้คะแนน (หลังคืนสำเร็จ)
   const [ratingBookId, setRatingBookId] = useState<string | null>(null);
@@ -139,47 +155,72 @@ export function MyBorrows({ active, history, onRefresh }: MyBorrowsProps) {
   // เปิด modal คืนหนังสือ (ไม่คืนทันที)
   function openReturnModal(record: MemberBorrowRecord) {
     setReturnModal(record);
+    setReturnCondition("");
+    setReturnPhoto(null);
+    setReturnPhotoPreview(null);
+    setReturnError(null);
   }
 
-  // ยืนยันคืนหนังสือจาก modal
+  // เลือกรูปถ่ายหนังสือ (แสดง preview ก่อนอัปโหลด)
+  function handleReturnPhotoSelect(file: File | null) {
+    setReturnPhoto(file);
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => setReturnPhotoPreview(reader.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      setReturnPhotoPreview(null);
+    }
+  }
+
+  // ยืนยันคืนหนังสือจาก modal → อัปโหลดรูป แล้วส่งคำขอกลืนคืน
   async function confirmReturn() {
     if (!returnModal) return;
     setToast(null);
+    setReturnError(null);
+
+    if (!returnCondition) {
+      setReturnError("กรุณาเลือกสภาพหนังสือ");
+      return;
+    }
+    if (!returnPhoto) {
+      setReturnError("กรุณาถ่ายรูปหรือเลือกไฟล์ภาพหนังสือ");
+      return;
+    }
 
     startReturnTransition(async () => {
+      // 1. อัปโหลดรูปถ่าย
+      setReturnUploading(true);
+      const uploadForm = new FormData();
+      uploadForm.set("photo", returnPhoto);
+      const uploadRes = await uploadReturnPhotoAction(uploadForm);
+      setReturnUploading(false);
+
+      if (uploadRes.error || !uploadRes.url) {
+        setReturnError(uploadRes.error ?? "อัปโหลดรูปไม่สำเร็จ");
+        return;
+      }
+
+      // 2. ส่งคำขอกลืนคืน
       const formData = new FormData();
       formData.set("record_id", returnModal.id);
+      formData.set("return_condition", returnCondition);
+      formData.set("return_photo_url", uploadRes.url);
 
       const res = await memberReturnAction(formData);
 
       if (res.error) {
-        setToast({ type: "error", message: res.error });
+        setReturnError(res.error);
       } else {
         setToast({
           type: "success",
-          message: `คืนสำเร็จ: ${res.bookTitle ?? returnModal.book_copy?.book?.title ?? "หนังสือ"}`,
+          message: `ส่งคำขอกลืนคืนสำเร็จ: ${res.bookTitle ?? returnModal.book_copy?.book?.title ?? "หนังสือ"} — รอเจ้าหน้าที่ตรวจสอบ`,
           fineAmount: res.fineAmount,
         });
         setReturnModal(null);
         startTransition(() => {
           onRefresh();
         });
-
-        // หลังคืนสำเร็จ → เช็คว่าเคยให้คะแนนเล่มนี้หรือไม่
-        const bookId = (returnModal as any).book_copy?.book?.id;
-        if (bookId) {
-          try {
-            const checkForm = new FormData();
-            checkForm.set("bookId", bookId);
-            const rateRes = await getMyRatingAction(bookId);
-            // ถ้ายังไม่เคยให้คะแนน (rating = 0) → เปิด popup ให้คะแนน
-            if (!rateRes.data?.rating || rateRes.data.rating === 0) {
-              setRatingBookId(bookId);
-            }
-          } catch {
-            // ignore — ไม่บังคับให้คะแนน
-          }
-        }
       }
       setTimeout(() => setToast(null), 5000);
     });
@@ -338,15 +379,22 @@ export function MyBorrows({ active, history, onRefresh }: MyBorrowsProps) {
                             ต่ออายุครบแล้ว
                           </span>
                         )}
-                        <button
-                          type="button"
-                          onClick={() => openReturnModal(record)}
-                          disabled={pending}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 hover:bg-amber-100 dark:hover:bg-amber-500/20 rounded-md transition disabled:opacity-60"
-                        >
-                          <PhosphorIcon name="arrow-u-up-left" className="text-sm" />
-                          คืนหนังสือ
-                        </button>
+                        {record.status === "pending_return" ? (
+                          <span className="inline-flex items-center gap-1 px-3 py-1.5 text-xs text-blue-500 dark:text-blue-400">
+                            <PhosphorIcon name="hourglass-medium" weight="fill" className="text-sm" />
+                            รอเจ้าหน้าที่ตรวจสอบ
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => openReturnModal(record)}
+                            disabled={pending}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 hover:bg-amber-100 dark:hover:bg-amber-500/20 rounded-md transition disabled:opacity-60"
+                          >
+                            <PhosphorIcon name="arrow-u-up-left" className="text-sm" />
+                            คืนหนังสือ
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -578,7 +626,90 @@ export function MyBorrows({ active, history, onRefresh }: MyBorrowsProps) {
               </div>
             </div>
 
-            {/* แสดงค่าปรับ (ถ้าเกินกำหนด) */}
+            {/* คำอธิบายขั้นตอนการคืน */}
+            <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/30 rounded-lg p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <PhosphorIcon name="info" weight="fill" className="text-blue-500 text-sm" />
+                <span className="text-xs font-bold text-blue-600 dark:text-blue-400">
+                  ขั้นตอนการคืนหนังสือ
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                ถ่ายรูปหนังสือและเลือกสภาพ จากนั้นส่งคำขอคืน เจ้าหน้าที่จะตรวจสอบภายใน 7 วัน และแจ้งผลให้คุณทราบทาง LINE
+              </p>
+            </div>
+
+            {/* ถ่ายรูปหนังสือ */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+                รูปถ่ายหนังสือ <span className="text-price-red">*</span>
+              </label>
+              <div className="flex items-start gap-3">
+                <div className="w-20 h-20 rounded-lg overflow-hidden border border-dashed border-gray-300 dark:border-border-base bg-gray-50 dark:bg-black/20 flex items-center justify-center shrink-0">
+                  {returnPhotoPreview ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={returnPhotoPreview} alt="รูปถ่ายหนังสือ" className="w-full h-full object-cover" />
+                  ) : (
+                    <PhosphorIcon name="camera" className="text-2xl text-slate-300 dark:text-slate-600" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <label className="inline-flex items-center gap-2 px-4 py-2 text-sm font-bold text-meb-green bg-meb-light dark:bg-meb-green/10 hover:bg-meb-light/80 dark:hover:bg-meb-green/20 rounded-md cursor-pointer transition">
+                    <PhosphorIcon name="camera-plus" />
+                    {returnPhotoPreview ? "เปลี่ยนรูป" : "เลือก / ถ่ายรูป"}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      capture="environment"
+                      className="hidden"
+                      onChange={(e) => handleReturnPhotoSelect(e.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                  {returnPhoto && (
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1.5">
+                      {returnPhoto.name} ({(returnPhoto.size / (1024 * 1024)).toFixed(1)} MB)
+                    </p>
+                  )}
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
+                    JPEG / PNG / WEBP ไม่เกิน 5MB
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* เลือกสภาพหนังสือ */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+                สภาพหนังสือ <span className="text-price-red">*</span>
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { value: "normal", label: "ปกติ", icon: "check-circle", color: "meb-green" },
+                  { value: "slight_damage", label: "ชำรุดเล็กน้อย", icon: "warning-circle", color: "amber-500" },
+                  { value: "damaged", label: "ชำรุดเสียหาย", icon: "x-circle", color: "price-red" },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setReturnCondition(opt.value)}
+                    className={`flex flex-col items-center gap-1.5 px-2 py-3 rounded-lg border text-xs font-bold transition ${
+                      returnCondition === opt.value
+                        ? "border-meb-green bg-meb-light/60 dark:bg-meb-green/10 text-meb-green"
+                        : "border-gray-200 dark:border-border-base text-slate-500 dark:text-slate-400 hover:border-meb-green/40"
+                    }`}
+                  >
+                    <PhosphorIcon
+                      name={opt.icon}
+                      weight="fill"
+                      className={returnCondition === opt.value ? `text-${opt.color}` : "text-slate-300 dark:text-slate-600"}
+                    />
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* แจ้งเตือนกรณีเกินกำหนด */}
             {getRemainingDays(returnModal.due_date) < 0 && (
               <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-lg p-3">
                 <div className="flex items-center gap-2 mb-1">
@@ -588,11 +719,16 @@ export function MyBorrows({ active, history, onRefresh }: MyBorrowsProps) {
                   </span>
                 </div>
                 <p className="text-xs text-slate-600 dark:text-slate-300">
-                  เกินกำหนด {Math.abs(getRemainingDays(returnModal.due_date))} วัน — ค่าปรับจะคำนวณอัตโนมัติตามอัตราที่กำหนด
+                  เกินกำหนด {Math.abs(getRemainingDays(returnModal.due_date))} วัน — เจ้าหน้าที่จะคำนวณค่าปรับให้หลังตรวจสอบ
                 </p>
-                <p className="text-[10px] text-slate-400 mt-1">
-                  * ระบบจะคำนวณและแสดงยอดค่าปรับหลังยืนยันการคืน
-                </p>
+              </div>
+            )}
+
+            {/* แสดง error ถ้ามี */}
+            {returnError && (
+              <div className="flex items-center gap-2 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-lg px-3 py-2.5 text-xs font-medium text-price-red">
+                <PhosphorIcon name="warning-circle" weight="fill" className="shrink-0" />
+                {returnError}
               </div>
             )}
 
@@ -601,25 +737,26 @@ export function MyBorrows({ active, history, onRefresh }: MyBorrowsProps) {
               <button
                 type="button"
                 onClick={confirmReturn}
-                disabled={returnPending}
+                disabled={returnPending || returnUploading}
                 className="btn-cta flex-1 inline-flex items-center justify-center gap-2 bg-meb-green hover:bg-meb-hover text-white font-bold px-4 py-3 rounded-md text-sm shadow-sm disabled:opacity-60"
               >
-                {returnPending ? (
+                {returnPending || returnUploading ? (
                   <>
                     <PhosphorIcon name="circle-notch" className="animate-spin" />
-                    กำลังคืน...
+                    {returnUploading ? "กำลังอัปโหลดรูป..." : "กำลังส่งคำขอ..."}
                   </>
                 ) : (
                   <>
                     <PhosphorIcon name="check-circle" weight="fill" />
-                    ยืนยันการคืน
+                    ส่งคำขอกลืนคืน
                   </>
                 )}
               </button>
               <button
                 type="button"
                 onClick={() => setReturnModal(null)}
-                className="px-5 py-3 text-sm font-medium text-slate-600 dark:text-slate-300 bg-gray-50 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-md border border-gray-200 dark:border-border-base transition"
+                disabled={returnPending || returnUploading}
+                className="px-5 py-3 text-sm font-medium text-slate-600 dark:text-slate-300 bg-gray-50 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-md border border-gray-200 dark:border-border-base transition disabled:opacity-60"
               >
                 ยกเลิก
               </button>

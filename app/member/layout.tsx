@@ -50,6 +50,7 @@ export default async function MemberLayout({
         fullName={fullName}
         userIdCode={userIdCode}
         avatarUrl={avatarUrl}
+        role={profile?.role ?? null}
       />
       <SecondaryNav />
       <main className="flex-1 max-w-[1200px] mx-auto px-4 py-6 space-y-6 w-full">

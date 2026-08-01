@@ -13,6 +13,8 @@ type MemberHeaderProps = {
   fullName: string;
   userIdCode: string;
   avatarUrl?: string | null;
+  /** บทบาทจาก public.users (staff/admin จะเห็นปุ่มสลับกลับไปหน้า admin) */
+  role?: string | null;
 };
 
 /**
@@ -20,12 +22,14 @@ type MemberHeaderProps = {
  * - โลโก้ วิทยาลัยเทคนิคอำนาจเจริญ (ซ้าย)
  * - ช่องค้นหา (กลาง, desktop เท่านั้น) — bg-white ชัดเจน
  * - แจ้งเตือน + theme toggle + โปรไฟล์ dropdown (ขวา)
+ * - admin จะเห็นปุ่มสลับกลับไปใช้งานหน้า admin
  * - Sticky top-0 z-50 bg-meb-green h-[60px]
  */
 export function MemberHeader({
   fullName,
   userIdCode,
   avatarUrl,
+  role,
 }: MemberHeaderProps) {
   const initials = fullName.slice(0, 2).trim();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -150,6 +154,20 @@ export function MemberHeader({
 
                 {/* Menu items */}
                 <nav className="py-1">
+                  {/* สลับกลับไปใช้งานหน้า admin — staff/admin เท่านั้น */}
+                  {(role === "admin" || role === "staff") && (
+                    <>
+                      <Link
+                        href="/staff"
+                        onClick={() => setDropdownOpen(false)}
+                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-white/5 transition"
+                      >
+                        <PhosphorIcon name="shield-check" weight="fill" className="text-base text-meb-green" />
+                        สลับกลับไปใช้งาน Admin
+                      </Link>
+                      <div className="border-t border-gray-100 dark:border-border-base" />
+                    </>
+                  )}
                   <Link
                     href="/member/profile"
                     onClick={() => setDropdownOpen(false)}

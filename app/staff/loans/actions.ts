@@ -28,12 +28,15 @@ export type BorrowRecord = {
   borrowed_at: string;
   due_date: string;
   returned_at: string | null;
-  status: "borrowing" | "returned" | "overdue" | "lost";
+  status: "borrowing" | "returned" | "overdue" | "lost" | "pending_return";
   fine_amount: number;
   fine_reason: "overdue" | "damaged" | "lost" | "other" | null;
   remark: string | null;
   extension_count: number;
   handled_by: string | null;
+  return_requested_at: string | null;
+  return_photo_url: string | null;
+  return_condition: "normal" | "slight_damage" | "damaged" | null;
   user?: {
     full_name: string;
     user_id_code: string;
@@ -87,6 +90,7 @@ export async function getActiveBorrowsAction(filters?: {
       `
       id, user_id, book_copy_id, borrowed_at, due_date, returned_at,
       status, fine_amount, fine_reason, remark, extension_count, handled_by,
+      return_requested_at, return_photo_url, return_condition,
       users!borrow_records_user_id_fkey ( full_name, user_id_code ),
       book_copies!borrow_records_book_copy_id_fkey (
         barcode, status, condition,
@@ -119,6 +123,9 @@ export async function getActiveBorrowsAction(filters?: {
     remark: r.remark ?? null,
     extension_count: r.extension_count ?? 0,
     handled_by: r.handled_by ?? null,
+    return_requested_at: r.return_requested_at ?? null,
+    return_photo_url: r.return_photo_url ?? null,
+    return_condition: r.return_condition ?? null,
     user: r.users
       ? {
           full_name: r.users.full_name,
@@ -221,6 +228,7 @@ export async function getMemberActiveBorrowsAction(
       `
       id, user_id, book_copy_id, borrowed_at, due_date, returned_at,
       status, fine_amount, fine_reason, remark, extension_count, handled_by,
+      return_requested_at, return_photo_url, return_condition,
       users!borrow_records_user_id_fkey ( full_name, user_id_code ),
       book_copies!borrow_records_book_copy_id_fkey (
         barcode, status, condition,
@@ -247,6 +255,9 @@ export async function getMemberActiveBorrowsAction(
     remark: r.remark ?? null,
     extension_count: r.extension_count ?? 0,
     handled_by: r.handled_by ?? null,
+    return_requested_at: r.return_requested_at ?? null,
+    return_photo_url: r.return_photo_url ?? null,
+    return_condition: r.return_condition ?? null,
     user: r.users
       ? {
           full_name: r.users.full_name,

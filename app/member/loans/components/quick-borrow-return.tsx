@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { PhosphorIcon } from "../../../components/phosphor-icon";
+import { Modal } from "../../../components/modal";
 import {
   memberBorrowAction,
   memberReturnAction,
+  uploadReturnPhotoAction,
   type MemberBorrowRecord,
 } from "../actions";
 
@@ -54,6 +56,20 @@ export function QuickBorrowReturn({
     fineAmount?: number;
   } | null>(null);
   const returnInputRef = useRef<HTMLInputElement>(null);
+
+  // --- คำขอกลืนคืน (ถ่ายรูป + เลือกสภาพ) ---
+  const [returnTarget, setReturnTarget] = useState<{
+    mode: "barcode" | "record";
+    value: string;
+    bookTitle: string;
+  } | null>(null);
+  const [returnCondition, setReturnCondition] = useState<
+    "normal" | "slight_damage" | "damaged" | ""
+  >("");
+  const [returnPhoto, setReturnPhoto] = useState<File | null>(null);
+  const [returnPhotoPreview, setReturnPhotoPreview] = useState<string | null>(null);
+  const [returnUploading, setReturnUploading] = useState(false);
+  const [returnError, setReturnError] = useState<string | null>(null);
 
   const [, startTransition] = useTransition();
 
@@ -111,66 +127,110 @@ export function QuickBorrowReturn({
     }
   }
 
-  // --- จัดการคืน (สแกนบาร์โค้ด) ---
-  async function handleReturn(e: React.FormEvent) {
+  // --- สแกนบาร์โค้ดคืน → เปิด modal ถ่ายรูป/เลือกสภาพ ---
+  function handleReturn(e: React.FormEvent) {
     e.preventDefault();
     const b = returnBarcode.trim();
     if (!b || returnLoading) return;
 
+    setReturnTarget({
+      mode: "barcode",
+      value: b,
+      bookTitle: "หนังสือ",
+    });
+    setReturnCondition("");
+    setReturnPhoto(null);
+    setReturnPhotoPreview(null);
+    setReturnError(null);
+  }
+
+  // --- กดปุ่มคืนในรายการ → เปิด modal ถ่ายรูป/เลือกสภาพ ---
+  function openReturnByRecord(record: MemberBorrowRecord) {
+    setReturnTarget({
+      mode: "record",
+      value: record.id,
+      bookTitle: record.book_copy?.book?.title ?? "ไม่ระบุชื่อ",
+    });
+    setReturnCondition("");
+    setReturnPhoto(null);
+    setReturnPhotoPreview(null);
+    setReturnError(null);
+  }
+
+  // --- เลือกรูปถ่าย ---
+  function handleReturnPhotoSelect(file: File | null) {
+    setReturnPhoto(file);
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => setReturnPhotoPreview(reader.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      setReturnPhotoPreview(null);
+    }
+  }
+
+  // --- ยืนยันคำขอกลืนคืน (อัปโหลดรูป + ส่งคำขอ) ---
+  async function confirmReturnRequest() {
+    if (!returnTarget) return;
+    if (!returnCondition) {
+      setReturnError("กรุณาเลือกสภาพหนังสือ");
+      return;
+    }
+    if (!returnPhoto) {
+      setReturnError("กรุณาถ่ายรูปหรือเลือกไฟล์ภาพหนังสือ");
+      return;
+    }
+
     setReturnLoading(true);
     setReturnToast(null);
+    setReturnError(null);
 
     try {
+      // 1. อัปโหลดรูปถ่าย
+      setReturnUploading(true);
+      const uploadForm = new FormData();
+      uploadForm.set("photo", returnPhoto);
+      const uploadRes = await uploadReturnPhotoAction(uploadForm);
+      setReturnUploading(false);
+
+      if (uploadRes.error || !uploadRes.url) {
+        setReturnError(uploadRes.error ?? "อัปโหลดรูปไม่สำเร็จ");
+        return;
+      }
+
+      // 2. ส่งคำขอกลืนคืน
       const formData = new FormData();
-      formData.set("barcode", b);
+      formData.set(returnTarget.mode === "barcode" ? "barcode" : "record_id", returnTarget.value);
+      formData.set("return_condition", returnCondition);
+      formData.set("return_photo_url", uploadRes.url);
+
       const res = await memberReturnAction(formData);
       if (res.error) {
-        setReturnToast({ type: "error", message: res.error });
+        setReturnError(res.error);
       } else {
         setReturnToast({
           type: "success",
-          message: `คืนสำเร็จ: ${res.bookTitle ?? "หนังสือ"}`,
+          message: `ส่งคำขอกลืนคืน: ${res.bookTitle ?? returnTarget.bookTitle} — รอเจ้าหน้าที่ตรวจสอบ`,
           fineAmount: res.fineAmount,
         });
+        setReturnTarget(null);
         setReturnBarcode("");
         startTransition(() => {
           onReturned();
         });
       }
     } catch {
-      setReturnToast({ type: "error", message: "เกิดข้อผิดพลาด กรุณาลองใหม่" });
+      setReturnError("เกิดข้อผิดพลาด กรุณาลองใหม่");
     } finally {
+      setReturnUploading(false);
       setReturnLoading(false);
     }
   }
 
-  // --- คืนผ่านปุ่มในรายการ ---
+  // --- คืนผ่านปุ่มในรายการ (ความเข้ากันได้เก่า → เปิด modal) ---
   async function handleReturnByRecord(record: MemberBorrowRecord) {
     if (returnLoading) return;
-    setReturnLoading(true);
-    setReturnToast(null);
-
-    try {
-      const formData = new FormData();
-      formData.set("record_id", record.id);
-      const res = await memberReturnAction(formData);
-      if (res.error) {
-        setReturnToast({ type: "error", message: res.error });
-      } else {
-        setReturnToast({
-          type: "success",
-          message: `คืนสำเร็จ: ${res.bookTitle ?? record.book_copy?.book?.title ?? "หนังสือ"}`,
-          fineAmount: res.fineAmount,
-        });
-        startTransition(() => {
-          onReturned();
-        });
-      }
-    } catch {
-      setReturnToast({ type: "error", message: "เกิดข้อผิดพลาด กรุณาลองใหม่" });
-    } finally {
-      setReturnLoading(false);
-    }
+    openReturnByRecord(record);
   }
 
   // ตรวจ overdue สำหรับรายการ active
@@ -393,14 +453,20 @@ export function QuickBorrowReturn({
                         {overdue && " (เกินกำหนด)"}
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleReturnByRecord(record)}
-                      disabled={returnLoading}
-                      className="shrink-0 px-2.5 py-1 text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 hover:bg-amber-100 dark:hover:bg-amber-500/20 rounded-md transition disabled:opacity-60"
-                    >
-                      คืน
-                    </button>
+                    {record.status === "pending_return" ? (
+                      <span className="shrink-0 px-2.5 py-1 text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 rounded-md">
+                        รอตรวจสอบ
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleReturnByRecord(record)}
+                        disabled={returnLoading}
+                        className="shrink-0 px-2.5 py-1 text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 hover:bg-amber-100 dark:hover:bg-amber-500/20 rounded-md transition disabled:opacity-60"
+                      >
+                        คืน
+                      </button>
+                    )}
                   </li>
                 );
               })}
@@ -408,6 +474,140 @@ export function QuickBorrowReturn({
           )}
         </div>
       </section>
+
+      {/* ====== Modal ส่งคำขอกลืนคืน (ถ่ายรูป + เลือกสภาพ) ====== */}
+      <Modal
+        open={returnTarget !== null}
+        onClose={() => setReturnTarget(null)}
+        title="ส่งคำขอกลืนคืน"
+        description={returnTarget?.bookTitle ?? "หนังสือ"}
+        size="md"
+      >
+        {returnTarget && (
+          <div className="space-y-5">
+            {/* คำอธิบายขั้นตอน */}
+            <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/30 rounded-lg p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <PhosphorIcon name="info" weight="fill" className="text-blue-500 text-sm" />
+                <span className="text-xs font-bold text-blue-600 dark:text-blue-400">
+                  ขั้นตอนการคืนหนังสือ
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                ถ่ายรูปหนังสือและเลือกสภาพ จากนั้นส่งคำขอคืน เจ้าหน้าที่จะตรวจสอบภายใน 7 วัน และแจ้งผลให้คุณทราบทาง LINE
+              </p>
+            </div>
+
+            {/* ถ่ายรูปหนังสือ */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+                รูปถ่ายหนังสือ <span className="text-price-red">*</span>
+              </label>
+              <div className="flex items-start gap-3">
+                <div className="w-20 h-20 rounded-lg overflow-hidden border border-dashed border-gray-300 dark:border-border-base bg-gray-50 dark:bg-black/20 flex items-center justify-center shrink-0">
+                  {returnPhotoPreview ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={returnPhotoPreview} alt="รูปถ่ายหนังสือ" className="w-full h-full object-cover" />
+                  ) : (
+                    <PhosphorIcon name="camera" className="text-2xl text-slate-300 dark:text-slate-600" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <label className="inline-flex items-center gap-2 px-4 py-2 text-sm font-bold text-meb-green bg-meb-light dark:bg-meb-green/10 hover:bg-meb-light/80 dark:hover:bg-meb-green/20 rounded-md cursor-pointer transition">
+                    <PhosphorIcon name="camera-plus" />
+                    {returnPhotoPreview ? "เปลี่ยนรูป" : "เลือก / ถ่ายรูป"}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      capture="environment"
+                      className="hidden"
+                      onChange={(e) => handleReturnPhotoSelect(e.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                  {returnPhoto && (
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1.5">
+                      {returnPhoto.name} ({(returnPhoto.size / (1024 * 1024)).toFixed(1)} MB)
+                    </p>
+                  )}
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
+                    JPEG / PNG / WEBP ไม่เกิน 5MB
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* เลือกสภาพหนังสือ */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+                สภาพหนังสือ <span className="text-price-red">*</span>
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { value: "normal", label: "ปกติ", icon: "check-circle" },
+                  { value: "slight_damage", label: "ชำรุดเล็กน้อย", icon: "warning-circle" },
+                  { value: "damaged", label: "ชำรุดเสียหาย", icon: "x-circle" },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setReturnCondition(opt.value)}
+                    className={`flex flex-col items-center gap-1.5 px-2 py-3 rounded-lg border text-xs font-bold transition ${
+                      returnCondition === opt.value
+                        ? "border-meb-green bg-meb-light/60 dark:bg-meb-green/10 text-meb-green"
+                        : "border-gray-200 dark:border-border-base text-slate-500 dark:text-slate-400 hover:border-meb-green/40"
+                    }`}
+                  >
+                    <PhosphorIcon
+                      name={opt.icon}
+                      weight="fill"
+                      className={returnCondition === opt.value ? "text-meb-green" : "text-slate-300 dark:text-slate-600"}
+                    />
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* แสดง error ถ้ามี */}
+            {returnError && (
+              <div className="flex items-center gap-2 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-lg px-3 py-2.5 text-xs font-medium text-price-red">
+                <PhosphorIcon name="warning-circle" weight="fill" className="shrink-0" />
+                {returnError}
+              </div>
+            )}
+
+            {/* ปุ่มยืนยัน */}
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={confirmReturnRequest}
+                disabled={returnLoading || returnUploading}
+                className="btn-cta flex-1 inline-flex items-center justify-center gap-2 bg-meb-green hover:bg-meb-hover text-white font-bold px-4 py-3 rounded-md text-sm shadow-sm disabled:opacity-60"
+              >
+                {returnLoading || returnUploading ? (
+                  <>
+                    <PhosphorIcon name="circle-notch" className="animate-spin" />
+                    {returnUploading ? "กำลังอัปโหลดรูป..." : "กำลังส่งคำขอ..."}
+                  </>
+                ) : (
+                  <>
+                    <PhosphorIcon name="check-circle" weight="fill" />
+                    ส่งคำขอกลืนคืน
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setReturnTarget(null)}
+                disabled={returnLoading || returnUploading}
+                className="px-5 py-3 text-sm font-medium text-slate-600 dark:text-slate-300 bg-gray-50 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-md border border-gray-200 dark:border-border-base transition disabled:opacity-60"
+              >
+                ยกเลิก
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
