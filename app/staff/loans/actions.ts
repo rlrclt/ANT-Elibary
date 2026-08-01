@@ -537,7 +537,7 @@ export async function returnBookAction(
     if (damagedErr) return { error: damagedErr.message };
     damagedRecordId = damagedRow?.id ?? null;
 
-    // สร้าง fine_payment (pending) ให้สมาชิกเห็นใน /member/fines และชำระผ่านสลิปได้
+    // สร้าง fine_payment (unpaid) ให้สมาชิกเลือกวิธีชำระใน /member/fines
     if (damagedRecordId && fullPrice > 0) {
       const { error: payErr } = await supabase.from("fine_payments").insert({
         user_id: record.user_id,
@@ -546,27 +546,27 @@ export async function returnBookAction(
         fine_type: "damaged",
         amount: fullPrice,
         description: "ค่าชดใช้หนังสือชำรุด (เต็มราคาเล่ม)",
-        payment_method: "transfer",
-        status: "pending",
+        payment_method: null,
+        status: "unpaid",
       });
       if (payErr) return { error: payErr.message };
     }
   }
 
-  // (d) ถ้ามีค่าปรับ → บวก fine_balance ของสมาชิก
-  if (fineAmount > 0 && record.user_id) {
-    // ดึง fine_balance ปัจจุบันก่อนเพื่อหลีกเลี่ยง race condition
-    const { data: member } = await supabase
-      .from("users")
-      .select("fine_balance")
-      .eq("id", record.user_id)
-      .maybeSingle();
-
-    const currentFine = Number(member?.fine_balance ?? 0);
-    await supabase
-      .from("users")
-      .update({ fine_balance: currentFine + fineAmount })
-      .eq("id", record.user_id);
+  // (d) ถ้ามีค่าปรับ (ไม่ใช่ชำรุด — จัดการใน (c2) แล้ว) → สร้าง fine_payment (unpaid)
+  //     ให้สมาชิกเลือกวิธีชำระเอง (เดิมบวก fine_balance ตรงๆ ตอนนี้ให้ trigger จัดการแทน)
+  if (fineAmount > 0 && record.user_id && !isDamagedReturn) {
+    const { error: payErr } = await supabase.from("fine_payments").insert({
+      user_id: record.user_id,
+      borrow_record_id: record.id,
+      damaged_record_id: null,
+      fine_type: fineReason ?? "overdue",
+      amount: fineAmount,
+      description: `ค่าปรับการคืนหนังสือ (${fineReason === "damaged" ? "ชำรุด" : "คืนล่าช้า"})`,
+      payment_method: null,
+      status: "unpaid",
+    });
+    if (payErr) return { error: payErr.message };
   }
 
   // (e) บันทึก Notification Queue + ส่ง LINE แบบ realtime ผ่าน after()

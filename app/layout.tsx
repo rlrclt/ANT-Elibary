@@ -43,7 +43,11 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <Script
+          id="theme-init"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: themeInitScript }}
+        />
       </head>
       <body className="min-h-full flex flex-col bg-page-bg text-slate-800 dark:text-slate-200 font-sans overflow-x-hidden transition-colors duration-300">
         <ThemeProvider>{children}</ThemeProvider>

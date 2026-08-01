@@ -86,7 +86,7 @@ export default async function StaffMemberHistoryPage({ params }: PageProps) {
       .from("fine_payments")
       .select("*, borrow_records(id, due_date, returned_at)")
       .eq("user_id", id)
-      .order("paid_at", { ascending: false })
+      .order("created_at", { ascending: false })
       .limit(50),
   ]);
 
@@ -365,24 +365,40 @@ export default async function StaffMemberHistoryPage({ params }: PageProps) {
               <tbody>
                 {finePayments.map((f) => (
                   <tr key={f.id} className="border-b border-gray-50 dark:border-border-base last:border-0">
-                    <td className="px-5 py-3 text-slate-600 dark:text-slate-300">{formatDate(f.paid_at)}</td>
+                    <td className="px-5 py-3 text-slate-600 dark:text-slate-300">
+                      {formatDate(f.reviewed_at ?? f.created_at)}
+                    </td>
                     <td className="px-5 py-3 font-medium text-price-red">
                       ฿{Number(f.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}
                     </td>
                     <td className="px-5 py-3 text-slate-600 dark:text-slate-300">
-                      {f.payment_method === "cash" ? "เงินสด" : "โอนเงิน"}
+                      {f.payment_method === "counter"
+                        ? "เงินสด (เคาน์เตอร์)"
+                        : f.payment_method === "transfer"
+                          ? "โอนเงิน"
+                          : "ยังไม่เลือกวิธี"}
                     </td>
                     <td className="px-5 py-3">
                       <span
                         className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${
-                          f.status === "approved"
+                          f.status === "approved" || f.status === "counter_paid"
                             ? "bg-meb-light text-meb-green"
                             : f.status === "rejected"
                               ? "bg-red-50 text-price-red"
-                              : "bg-amber-50 text-amber-600"
+                              : f.status === "counter_pending"
+                                ? "bg-sky-50 text-sky-600"
+                                : "bg-amber-50 text-amber-600"
                         }`}
                       >
-                        {f.status === "approved" ? "อนุมัติแล้ว" : f.status === "rejected" ? "ปฏิเสธ" : "รอตรวจสอบ"}
+                        {f.status === "approved" || f.status === "counter_paid"
+                          ? "ชำระแล้ว"
+                          : f.status === "rejected"
+                            ? "ปฏิเสธ"
+                            : f.status === "counter_pending"
+                              ? "รอรับเงินสด"
+                              : f.status === "unpaid"
+                                ? "ยังไม่ชำระ"
+                                : "รอตรวจสอบ"}
                       </span>
                     </td>
                   </tr>

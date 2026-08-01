@@ -1023,3 +1023,98 @@ export async function searchByBarcodeForMemberAction(
     error: null,
   };
 }
+
+// ---------- 9. smartScanAction ----------
+/**
+ * สแกนบาร์โค้ดอัตโนมัติ 1 ช่อง — ระบบตัดสินใจเองว่าเป็นยืมหรือคืน
+ * หลักการ:
+ * - ถ้าผู้ใช้มีรายการยืมค้างอยู่ (returned_at IS NULL) สำหรับเล่มนี้ → intent: "return"
+ * - ไม่มีรายการค้าง + เล่มสถานะ available → intent: "borrow"
+ * - กรณีอื่น → คืน error พร้อมสาเหตุ
+ * ไม่ทำการ mutate ใด ๆ — client จะเรียก action ยืม/คืนเดิมอีกครั้ง
+ */
+export async function smartScanAction(
+  barcode: string,
+): Promise<{
+  intent: "borrow" | "return";
+  recordId?: string;
+  bookTitle?: string;
+  error: string | null;
+}> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { intent: "borrow", error: "กรุณาเข้าสู่ระบบ" };
+
+  const b = barcode.trim();
+  if (!b) return { intent: "borrow", error: "กรุณากรอกบาร์โค้ด" };
+
+  // หาเล่มด้วยบาร์โค้ด
+  const { data: copy, error: cErr } = await supabase
+    .from("book_copies")
+    .select(
+      `
+      id, status,
+      books!book_copies_book_id_fkey ( title )
+      `,
+    )
+    .eq("barcode", b)
+    .maybeSingle();
+
+  if (cErr) return { intent: "borrow", error: cErr.message };
+  if (!copy)
+    return { intent: "borrow", error: "ไม่พบเล่มหนังสือที่บาร์โค้ดนี้" };
+
+  const bookTitle = (copy as any).books?.title ?? "ไม่ระบุชื่อ";
+
+  // ตรวจรายการยืมค้างของสมาชิกคนนี้สำหรับเล่มนี้
+  const { data: record } = await supabase
+    .from("borrow_records")
+    .select("id, status")
+    .eq("book_copy_id", copy.id)
+    .eq("user_id", user.id)
+    .is("returned_at", null)
+    .maybeSingle();
+
+  // มีรายการยืมค้าง → ถือเป็น "คืนหนังสือ"
+  if (record) {
+    if ((record as any).status === "pending_return") {
+      return {
+        intent: "return",
+        error: "ได้ส่งคำขอกลืนคืนแล้ว รอเจ้าหน้าที่ตรวจสอบ",
+        recordId: (record as any).id,
+        bookTitle,
+      };
+    }
+    return {
+      intent: "return",
+      recordId: (record as any).id,
+      bookTitle,
+      error: null,
+    };
+  }
+
+  // ไม่มีรายการยืมค้าง → ดูสถานะเล่มว่ายืมได้ไหม
+  if ((copy as any).status !== "available") {
+    if ((copy as any).status === "borrowed") {
+      return {
+        intent: "borrow",
+        error: "เล่มนี้ถูกยืมโดยสมาชิกอื่น ไม่สามารถยืมได้",
+      };
+    }
+    return {
+      intent: "borrow",
+      error: `เล่มนี้ไม่พร้อมยืม (สถานะปัจจุบัน: ${(copy as any).status})`,
+    };
+  }
+  // บล็อกหนังสือเก่า (status='old' ของเล่มแม่)
+  if ((copy as any).books?.status === "old") {
+    return {
+      intent: "borrow",
+      error: "หนังสือเล่มนี้เป็นหนังสือเก่า (อายุ 5 ปีขึ้นไป) ไม่สามารถยืมได้",
+    };
+  }
+
+  return { intent: "borrow", bookTitle, error: null };
+}

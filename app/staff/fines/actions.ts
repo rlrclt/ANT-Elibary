@@ -26,10 +26,6 @@ export type FineSettings = {
   id: string;
   overdue_rate: number;
   overdue_max_days: number;
-  damage_new_pct: number;
-  damage_good_pct: number;
-  damage_fair_pct: number;
-  damage_poor_pct: number;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -54,13 +50,14 @@ export type PendingFine = {
   fine_type: string;
   amount: number;
   description: string | null;
-  payment_method: string;
+  payment_method: string | null;
   slip_url: string | null;
   slip_uploaded_at: string | null;
   status: string;
   review_note: string | null;
   reviewed_by: string | null;
   reviewed_at: string | null;
+  receipt_number: string | null;
   created_at: string;
   updated_at: string;
   user: {
@@ -138,33 +135,11 @@ export async function updateFineSettingsAction(
     String(formData.get("overdue_max_days") ?? ""),
     10,
   );
-  const damage_new_pct = parseFloat(
-    String(formData.get("damage_new_pct") ?? ""),
-  );
-  const damage_good_pct = parseFloat(
-    String(formData.get("damage_good_pct") ?? ""),
-  );
-  const damage_fair_pct = parseFloat(
-    String(formData.get("damage_fair_pct") ?? ""),
-  );
-  const damage_poor_pct = parseFloat(
-    String(formData.get("damage_poor_pct") ?? ""),
-  );
 
   if (isNaN(overdue_rate) || overdue_rate < 0)
     return { error: "อัตราค่าปรับล่าช้าไม่ถูกต้อง" };
   if (isNaN(overdue_max_days) || overdue_max_days < 0)
     return { error: "จำนวนวันสูงสุดไม่ถูกต้อง" };
-  const pctChecks: [string, number][] = [
-    ["มือหนึ่ง", damage_new_pct],
-    ["สภาพดี", damage_good_pct],
-    ["พอใช้", damage_fair_pct],
-    ["ชำรุด", damage_poor_pct],
-  ];
-  for (const [label, val] of pctChecks) {
-    if (isNaN(val) || val < 0 || val > 100)
-      return { error: `เปอร์เซ็นต์ค่าปรับ (${label}) ต้องอยู่ระหว่าง 0-100` };
-  }
 
   if (!id) {
     // ถ้ายังไม่มี row → insert ใหม่
@@ -173,10 +148,6 @@ export async function updateFineSettingsAction(
       .insert({
         overdue_rate,
         overdue_max_days,
-        damage_new_pct,
-        damage_good_pct,
-        damage_fair_pct,
-        damage_poor_pct,
         is_active: true,
         updated_by: auth.userId,
       })
@@ -192,10 +163,6 @@ export async function updateFineSettingsAction(
     .update({
       overdue_rate,
       overdue_max_days,
-      damage_new_pct,
-      damage_good_pct,
-      damage_fair_pct,
-      damage_poor_pct,
       updated_by: auth.userId,
     })
     .eq("id", id);
@@ -352,6 +319,9 @@ export async function deletePaymentMethodAction(
 }
 
 // ---------- 7. getPendingFinesAction ----------
+/**
+ * ดึงรายการชำระค่าปรับที่แนบสลิปแล้ว รอเจ้าหน้าที่อนุมัติ (status='pending')
+ */
 export async function getPendingFinesAction(): Promise<
   ActionResult<PendingFine[]>
 > {
@@ -365,7 +335,7 @@ export async function getPendingFinesAction(): Promise<
       `
       id, user_id, borrow_record_id, fine_type, amount, description,
       payment_method, slip_url, slip_uploaded_at, status, review_note,
-      reviewed_by, reviewed_at, created_at, updated_at,
+      reviewed_by, reviewed_at, receipt_number, created_at, updated_at,
       users!fine_payments_user_id_fkey ( full_name, user_id_code ),
       borrow_records!fine_payments_borrow_record_id_fkey (
         id, due_date, returned_at, status, fine_amount, fine_reason
@@ -377,20 +347,105 @@ export async function getPendingFinesAction(): Promise<
 
   if (error) return { data: null, error: error.message };
 
-  const rows = (data ?? []).map((r: any) => ({
+  return { data: mapFineRows(data ?? []), error: null };
+}
+
+// ---------- 7.5 getOutstandingFinesAction ----------
+/**
+ * ดึงรายการค่าปรับค้าง (ยังไม่ชำระ):
+ *   - unpaid (ยังไม่เลือกวิธีชำระ)
+ *   - counter_pending (แจ้งจะชำระเงินสดที่เคาน์เตอร์ รอเจ้าหน้าที่รับเงิน)
+ */
+export async function getOutstandingFinesAction(): Promise<
+  ActionResult<PendingFine[]>
+> {
+  const auth = await requireStaff();
+  if (!auth.ok) return { data: null, error: auth.error };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("fine_payments")
+    .select(
+      `
+      id, user_id, borrow_record_id, fine_type, amount, description,
+      payment_method, slip_url, slip_uploaded_at, status, review_note,
+      reviewed_by, reviewed_at, receipt_number, created_at, updated_at,
+      users!fine_payments_user_id_fkey ( full_name, user_id_code ),
+      borrow_records!fine_payments_borrow_record_id_fkey (
+        id, due_date, returned_at, status, fine_amount, fine_reason
+      )
+      `,
+    )
+    .in("status", ["unpaid", "counter_pending"])
+    .order("created_at", { ascending: false });
+
+  if (error) return { data: null, error: error.message };
+
+  return { data: mapFineRows(data ?? []), error: null };
+}
+
+// ---------- 7.6 getAllFinesAction ----------
+/**
+ * ดึงค่าปรับทั้งหมดทุกสถานะ พร้อมฟิลเตอร์
+ *   - status: สถานะ (unpaid | counter_pending | pending | approved | rejected | counter_paid | all)
+ *   - query: ค้นหาชื่อสมาชิก / รหัสสมาชิก
+ */
+export async function getAllFinesAction(formData: FormData): Promise<
+  ActionResult<PendingFine[]>
+> {
+  const auth = await requireStaff();
+  if (!auth.ok) return { data: null, error: auth.error };
+
+  const supabase = await createClient();
+
+  const status = String(formData.get("status") ?? "").trim();
+  const query = String(formData.get("query") ?? "").trim();
+
+  let q = supabase
+    .from("fine_payments")
+    .select(
+      `
+      id, user_id, borrow_record_id, fine_type, amount, description,
+      payment_method, slip_url, slip_uploaded_at, status, review_note,
+      reviewed_by, reviewed_at, receipt_number, created_at, updated_at,
+      users!fine_payments_user_id_fkey ( full_name, user_id_code ),
+      borrow_records!fine_payments_borrow_record_id_fkey (
+        id, due_date, returned_at, status, fine_amount, fine_reason
+      )
+      `,
+    );
+
+  if (status && status !== "all") {
+    q = q.eq("status", status);
+  }
+
+  if (query) {
+    q = q.or(`users.full_name.ilike.%${query}%,users.user_id_code.ilike.%${query}%`);
+  }
+
+  const { data, error } = await q.order("created_at", { ascending: false });
+
+  if (error) return { data: null, error: error.message };
+
+  return { data: mapFineRows(data ?? []), error: null };
+}
+
+function mapFineRows(rows: any[]): PendingFine[] {
+  return rows.map((r: any) => ({
     id: r.id,
     user_id: r.user_id,
     borrow_record_id: r.borrow_record_id,
     fine_type: r.fine_type,
     amount: Number(r.amount ?? 0),
     description: r.description ?? null,
-    payment_method: r.payment_method,
+    payment_method: r.payment_method ?? null,
     slip_url: r.slip_url ?? null,
     slip_uploaded_at: r.slip_uploaded_at ?? null,
     status: r.status,
     review_note: r.review_note ?? null,
     reviewed_by: r.reviewed_by ?? null,
     reviewed_at: r.reviewed_at ?? null,
+    receipt_number: r.receipt_number ?? null,
     created_at: r.created_at,
     updated_at: r.updated_at,
     user: r.users
@@ -409,12 +464,15 @@ export async function getPendingFinesAction(): Promise<
           fine_reason: r.borrow_records.fine_reason ?? null,
         }
       : null,
-  })) as PendingFine[];
-
-  return { data: rows, error: null };
+  }));
 }
 
 // ---------- 8. approveFineAction ----------
+/**
+ * เจ้าหน้าที่อนุมัติการชำระ (สลิปโอนเงิน) ของสมาชิก:
+ *   - ตั้ง status='approved' + ออกเลขใบเสร็จ (receipt_number)
+ *   - ถ้าเป็นการชำระค่าชดใช้หนังสือชำรุด → resolve รายการชำรุดให้อัตโนมัติ
+ */
 export async function approveFineAction(
   formData: FormData,
 ): Promise<{ error: string | null }> {
@@ -426,15 +484,77 @@ export async function approveFineAction(
   if (!id) return { error: "ไม่พบ ID รายการชำระ" };
 
   const now = new Date().toISOString();
+  const receiptNumber = generateReceiptNumber();
   const { error } = await supabase
     .from("fine_payments")
     .update({
       status: "approved",
       reviewed_by: auth.userId,
       reviewed_at: now,
+      receipt_number: receiptNumber,
     })
     .eq("id", id)
     .eq("status", "pending");
+
+  if (error) return { error: error.message };
+
+  // ถ้าเป็นการชำระค่าชดใช้หนังสือชำรุด → resolve รายการชำรุดให้อัตโนมัติ
+  const { data: payment } = await supabase
+    .from("fine_payments")
+    .select("damaged_record_id")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (payment?.damaged_record_id) {
+    const { error: damagedErr } = await supabase
+      .from("damaged_records")
+      .update({
+        status: "paid",
+        resolution_method: "payment",
+        fine_payment_id: id,
+        handled_by: auth.userId,
+        updated_at: now,
+      })
+      .eq("id", payment.damaged_record_id)
+      .eq("status", "unresolved");
+
+    if (damagedErr) return { error: damagedErr.message };
+  }
+
+  revalidatePath("/staff/fines");
+  revalidatePath("/staff/books/damaged");
+  return { error: null };
+}
+
+// ---------- 8.5 markCounterPaidAction ----------
+/**
+ * เจ้าหน้าที่รับชำระเงินสดที่เคาน์เตอร์ (member แจ้ง counter_pending แล้ว):
+ *   - ตั้ง status='counter_paid' + payment_method='counter' + ออกเลขใบเสร็จ
+ *   - ถ้าเป็นการชำระค่าชดใช้หนังสือชำรุด → resolve รายการชำรุดให้อัตโนมัติ
+ */
+export async function markCounterPaidAction(
+  formData: FormData,
+): Promise<{ error: string | null }> {
+  const auth = await requireStaff();
+  if (!auth.ok) return { error: auth.error };
+  const supabase = await createClient();
+
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) return { error: "ไม่พบ ID รายการชำระ" };
+
+  const now = new Date().toISOString();
+  const receiptNumber = generateReceiptNumber();
+  const { error } = await supabase
+    .from("fine_payments")
+    .update({
+      status: "counter_paid",
+      payment_method: "counter",
+      reviewed_by: auth.userId,
+      reviewed_at: now,
+      receipt_number: receiptNumber,
+    })
+    .eq("id", id)
+    .eq("status", "counter_pending");
 
   if (error) return { error: error.message };
 
@@ -496,6 +616,16 @@ export async function rejectFineAction(
 }
 
 // ---------- helpers ----------
+/** เลขใบเสร็จรูปแบบ RCP-yyyyMMdd-XXXX (X = random 4 หลัก) */
+function generateReceiptNumber(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  const rand = Math.floor(1000 + Math.random() * 9000);
+  return `RCP-${y}${m}${d}-${rand}`;
+}
+
 async function uploadQrImage(
   file: File,
   supabase: Awaited<ReturnType<typeof createClient>>,

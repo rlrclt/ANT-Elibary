@@ -702,7 +702,7 @@ export async function createDamagedRecordAction(
 
   if (damagedErr) return { error: damagedErr.message };
 
-  // 3. สร้าง fine_payments ให้สมาชิกชำระผ่านสลิปได้
+  // 3. สร้าง fine_payments (unpaid) ให้สมาชิกเลือกวิธีชำระใน /member/fines
   if (damagedRow?.id && fullPrice > 0) {
     const { error: payErr } = await supabase.from("fine_payments").insert({
       user_id: userId,
@@ -710,8 +710,8 @@ export async function createDamagedRecordAction(
       fine_type: "damaged",
       amount: fullPrice,
       description: "ค่าชดใช้หนังสือชำรุด (เต็มราคาเล่ม)",
-      payment_method: "transfer",
-      status: "pending",
+      payment_method: null,
+      status: "unpaid",
     });
     if (payErr) return { error: payErr.message };
   }

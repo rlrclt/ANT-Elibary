@@ -65,9 +65,6 @@ export function ReturnsClient({ initialRecords }: ReturnsClientProps) {
   const [remark, setRemark] = useState("");
   const [rejectReason, setRejectReason] = useState("");
 
-  // ใบเสร็จ
-  const [receipt, setReceipt] = useState<{ number: string; amount: number; bookTitle: string; memberName: string } | null>(null);
-
   const stats = useMemo(() => {
     const total = records.length;
     const over7 = records.filter((r) => getWaitingDays(r.return_requested_at) >= 7).length;
@@ -109,19 +106,11 @@ export function ReturnsClient({ initialRecords }: ReturnsClientProps) {
     } else {
       setToast({
         type: "success",
-        message: amount > 0 && res.receipt?.number
-          ? `อนุมัติการคืน + ค่าปรับ ${amount.toLocaleString("en-US")} บาท (ใบเสร็จ ${res.receipt.number})`
+        message: amount > 0
+          ? `อนุมัติการคืน + ค่าปรับ ${amount.toLocaleString("en-US")} บาท (สมาชิกชำระผ่าน /member/fines)`
           : "อนุมัติการคืนเรียบร้อย",
       });
       setRecords((prev) => prev.filter((r) => r.id !== reviewing.id));
-      if (amount > 0 && res.receipt?.number) {
-        setReceipt({
-          number: res.receipt.number,
-          amount,
-          bookTitle: reviewing.book_copy?.book?.title ?? "หนังสือ",
-          memberName: reviewing.user?.full_name ?? "-",
-        });
-      }
       setReviewing(null);
       setTimeout(() => setToast(null), 5000);
     }
@@ -497,40 +486,6 @@ export function ReturnsClient({ initialRecords }: ReturnsClientProps) {
                 ปฏิเสธและแจ้งสมาชิก
               </button>
             </div>
-          </div>
-        )}
-      </Modal>
-
-      {/* ====== Modal ใบเสร็จ ====== */}
-      <Modal
-        open={receipt !== null}
-        onClose={() => setReceipt(null)}
-        title="ใบเสร็จค่าปรับ"
-        description="ชำระที่เคาน์เตอร์แล้ว — พิมพ์หรือบันทึกไว้เป็นหลักฐาน"
-        size="sm"
-      >
-        {receipt && (
-          <div className="space-y-4">
-            <div className="rounded-lg border-2 border-dashed border-meb-green/40 bg-meb-light/10 dark:bg-meb-green/5 p-4 text-center space-y-2">
-              <p className="text-[10px] text-slate-400 uppercase tracking-widest">ใบเสร็จรับเงิน</p>
-              <p className="text-sm font-bold text-forest dark:text-slate-100">ANT E-Library</p>
-              <p className="text-xl font-bold text-meb-green font-mono">{receipt.number}</p>
-              <div className="text-xs text-slate-600 dark:text-slate-300 space-y-1 pt-1">
-                <p>ผู้ชำระ: {receipt.memberName}</p>
-                <p>รายการ: ค่าปรับการคืนหนังสือ</p>
-                <p>จำนวนเงิน: <span className="font-bold text-price-red">฿{receipt.amount.toLocaleString("en-US")}</span></p>
-                <p>ช่องทาง: ชำระที่เคาน์เตอร์</p>
-                <p>วันที่: {new Date().toLocaleDateString("th-TH", { day: "2-digit", month: "long", year: "numeric" })}</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="w-full inline-flex items-center justify-center gap-2 bg-meb-green hover:bg-meb-hover text-white font-bold px-4 py-3 rounded-md text-sm"
-            >
-              <PhosphorIcon name="printer" weight="fill" />
-              พิมพ์ใบเสร็จ
-            </button>
           </div>
         )}
       </Modal>

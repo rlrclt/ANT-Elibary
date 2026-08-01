@@ -61,25 +61,13 @@ const TABS: { key: TabKey; label: string; icon: string }[] = [
   { key: "notifications", label: "การแจ้งเตือน", icon: "bell" },
 ];
 
+// ปิดฟีเจอร์ชั่วคราว: เปลี่ยนรหัสผ่าน และ เปลี่ยนอีเมล
 const SECURITY_OPTIONS: {
   key: SecurityOption;
   label: string;
   description: string;
   icon: string;
-}[] = [
-  {
-    key: "password",
-    label: "เปลี่ยนรหัสผ่าน",
-    description: "เปลี่ยนรหัสผ่านเข้าระบบของคุณ",
-    icon: "key",
-  },
-  {
-    key: "email",
-    label: "เปลี่ยนอีเมล",
-    description: "เปลี่ยนอีเมลที่ใช้เข้าระบบ (ต้องยืนยันอีเมลใหม่)",
-    icon: "envelope-simple",
-  },
-];
+}[] = [];
 
 /**
  * ProfileClient — คอมโพเนนต์หลักสำหรับหน้าโปรไฟล์
@@ -240,32 +228,51 @@ export function ProfileClient({
               <h2 className="text-sm font-bold text-slate-700 dark:text-slate-300">
                 เลือกสิ่งที่ต้องการเปลี่ยนแปลง
               </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {SECURITY_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.key}
-                    onClick={() => setSecurityOption(opt.key)}
-                    className="card-lift flex items-start gap-3 p-4 rounded-xl bg-white dark:bg-card-bg border border-gray-100 dark:border-border-base hover:border-meb-green/30 transition text-left"
-                  >
-                    <div className="w-10 h-10 rounded-lg bg-meb-light dark:bg-meb-green/15 flex items-center justify-center text-meb-green text-xl shrink-0">
-                      <PhosphorIcon name={opt.icon} weight="fill" />
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="text-sm font-bold text-forest dark:text-slate-100">
-                        {opt.label}
-                      </h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
-                        {opt.description}
-                      </p>
-                    </div>
-                    <PhosphorIcon
-                      name="caret-right"
-                      weight="bold"
-                      className="text-slate-300 dark:text-slate-600 ml-auto shrink-0"
-                    />
-                  </button>
-                ))}
-              </div>
+              {SECURITY_OPTIONS.length === 0 ? (
+                <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20">
+                  <PhosphorIcon
+                    name="info"
+                    weight="fill"
+                    className="text-amber-500 dark:text-amber-400 text-2xl shrink-0 mt-0.5"
+                  />
+                  <div className="text-sm flex-1 min-w-0">
+                    <p className="font-bold text-amber-600 dark:text-amber-400">
+                      ฟังก์ชันนี้ปิดใช้งานชั่วคราว
+                    </p>
+                    <p className="text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
+                      ยังไม่สามารถเปลี่ยนรหัสผ่านและอีเมลได้ในขณะนี้
+                      กรุณาติดต่อเจ้าหน้าที่ห้องสมุดเพื่อขอความช่วยเหลือ
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {SECURITY_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.key}
+                      onClick={() => setSecurityOption(opt.key)}
+                      className="card-lift flex items-start gap-3 p-4 rounded-xl bg-white dark:bg-card-bg border border-gray-100 dark:border-border-base hover:border-meb-green/30 transition text-left"
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-meb-light dark:bg-meb-green/15 flex items-center justify-center text-meb-green text-xl shrink-0">
+                        <PhosphorIcon name={opt.icon} weight="fill" />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-bold text-forest dark:text-slate-100">
+                          {opt.label}
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+                          {opt.description}
+                        </p>
+                      </div>
+                      <PhosphorIcon
+                        name="caret-right"
+                        weight="bold"
+                        className="text-slate-300 dark:text-slate-600 ml-auto shrink-0"
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
             </>
           ) : (
             /* Step 2: ฟอร์มที่เลือก */

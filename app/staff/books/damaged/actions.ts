@@ -277,8 +277,9 @@ export async function resolveDamagedByCounterAction(
   const now = new Date().toISOString();
   const amount = Number(record.fine_amount ?? 0);
   const finePaymentId = crypto.randomUUID();
+  const receiptNumber = generateReceiptNumber();
 
-  // 1. สร้าง fine_payment (counter_paid) — บันทึกยอดชดใช้
+  // 1. สร้าง fine_payment (counter_paid) — บันทึกยอดชดใช้ + ออกใบเสร็จ
   const { error: payErr } = await supabase.from("fine_payments").insert({
     id: finePaymentId,
     user_id: record.user_id,
@@ -291,6 +292,7 @@ export async function resolveDamagedByCounterAction(
     status: "counter_paid",
     reviewed_by: auth.userId,
     reviewed_at: now,
+    receipt_number: receiptNumber,
   });
 
   if (payErr) return { error: payErr.message };
@@ -465,4 +467,15 @@ export async function getDamagedMembersAction(): Promise<
   }
 
   return { data: [...map.values()], error: null };
+}
+
+// ---------- helper: สร้างเลขใบเสร็จ ----------
+/** เลขใบเสร็จรูปแบบ RCP-yyyyMMdd-XXXX (X = random 4 หลัก) */
+function generateReceiptNumber(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  const rand = Math.floor(1000 + Math.random() * 9000);
+  return `RCP-${y}${m}${d}-${rand}`;
 }

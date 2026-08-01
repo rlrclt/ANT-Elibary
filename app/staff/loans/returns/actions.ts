@@ -14,7 +14,7 @@ import {
  * ภาพรวม:
  *   - สมาชิกส่งคำขอกลืนคืน (status='pending_return' + รูปถ่าย + สภาพหนังสือ)
  *   - เจ้าหน้าที่ดูรูป/สภาพ แล้วตัดสินใจ:
- *       • อนุมัติ (approve) → กำหนดค่าปรับเอง + ออกใบเสร็จ (receipt)
+ *       • อนุมัติ (approve) → กำหนดค่าปรับเอง (สร้าง fine_payment สถานะ unpaid)
  *       • ปฏิเสธ (reject) → ส่งกลับให้สมาชิก (กลับเป็น borrowing/overdue)
  *   - ถ้าเกิน 7 วัน ไม่มีใครตรวจสอบ → auto-approve ผ่าน cron (utils/line-notify.ts)
  */
@@ -158,14 +158,14 @@ export async function getPendingReturnsAction(): Promise<
  *   - บันทึกวันคืนจริง + สถานะ returned
  *   - เจ้าหน้าที่กำหนดค่าปรับเอง (fine_amount + fine_reason)
  *   - เล่มคืนกลับเป็น available หรือ damaged (ตามสภาพที่ตรวจ)
- *   - ถ้ามีค่าปรับ → สร้าง fine_payment (ชำระที่เคาน์เตอร์) + ออกเลขใบเสร็จ
+ *   - ถ้ามีค่าปรับ → สร้าง fine_payment (status='unpaid') — สมาชิกเลือกวิธีชำระเอง
  *   - ถ้าชำรุด → สร้าง damaged_records (บล็อกการยืมของสมาชิกจนกว่าจะชดใช้)
  *
  * formData: record_id, fine_amount, fine_reason, remark, condition_after
  */
 export async function approveReturnAction(
   formData: FormData,
-): Promise<{ error: string | null; receipt?: { number: string; amount: number } | null }> {
+): Promise<{ error: string | null }> {
   const auth = await requireStaff();
   if (!auth.ok) return { error: auth.error };
   const supabase = await createClient();
@@ -223,7 +223,7 @@ export async function approveReturnAction(
 
   if (copyErr) return { error: copyErr.message };
 
-  // (c) ถ้าชำรุด → สร้าง damaged_records (ผูกผู้ยืม) + fine_payment เต็มราคา
+  // (c) ถ้าชำรุด → สร้าง damaged_records (ผูกผู้ยืม) + fine_payment (unpaid) เต็มราคา
   let fullPriceFine = 0;
   if (isDamaged) {
     const { data: copyPrice } = await supabase
@@ -257,29 +257,24 @@ export async function approveReturnAction(
         fine_type: "damaged",
         amount: fullPriceFine,
         description: "ค่าชดใช้หนังสือชำรุด (เต็มราคาเล่ม)",
-        payment_method: "transfer",
-        status: "pending",
+        payment_method: null,
+        status: "unpaid",
       });
       if (payErr) return { error: payErr.message };
     }
   }
 
-  // (d) ถ้ามีค่าปรับ → สร้าง fine_payment ชำระที่เคาน์เตอร์ + ออกเลขใบเสร็จ
-  let receiptNumber: string | null = null;
-  if (fineAmount > 0) {
-    receiptNumber = generateReceiptNumber();
+  // (d) ถ้ามีค่าปรับ (ไม่ใช่ชำรุด — จัดการใน (c) แล้ว) → สร้าง fine_payment (unpaid)
+  if (fineAmount > 0 && !isDamaged) {
     const { error: payErr } = await supabase.from("fine_payments").insert({
       user_id: record.user_id,
       borrow_record_id: record.id,
       damaged_record_id: null,
       fine_type: fineReason,
       amount: fineAmount,
-      description: `ค่าปรับการคืนหนังสือ (ชำระที่เคาน์เตอร์) เลขที่ ${receiptNumber}`,
-      payment_method: "counter",
-      status: "counter_paid",
-      receipt_number: receiptNumber,
-      reviewed_by: auth.userId,
-      reviewed_at: now,
+      description: `ค่าปรับการคืนหนังสือ (${fineReason === "overdue" ? "คืนล่าช้า" : "อื่นๆ"})`,
+      payment_method: null,
+      status: "unpaid",
     });
     if (payErr) return { error: payErr.message };
   }
@@ -308,7 +303,7 @@ export async function approveReturnAction(
 
   let fineText = "";
   if (fineAmount > 0) {
-    fineText = ` ค่าปรับ ${fineAmount.toLocaleString("en-US")} บาท${receiptNumber ? ` (ใบเสร็จ ${receiptNumber})` : ""}`;
+    fineText = ` ค่าปรับ ${fineAmount.toLocaleString("en-US")} บาท — กรุณาชำระผ่าน /member/fines`;
   } else if (isDamaged) {
     fineText = " ตรวจพบความชำรุด — ติดต่อเจ้าหน้าที่เพื่อชดใช้";
   }
@@ -334,7 +329,7 @@ export async function approveReturnAction(
 
   revalidatePath("/staff/loans/returns");
   revalidatePath("/staff/loans");
-  return { error: null, receipt: fineAmount > 0 ? { number: receiptNumber ?? "", amount: fineAmount } : null };
+  return { error: null };
 }
 
 // ---------- 3. rejectReturnAction ----------
@@ -433,15 +428,4 @@ export async function rejectReturnAction(
   revalidatePath("/staff/loans/returns");
   revalidatePath("/staff/loans");
   return { error: null };
-}
-
-// ---------- helper: สร้างเลขใบเสร็จ ----------
-/** เลขใบเสร็จรูปแบบ RCP-yyyyMMdd-XXXX (X = random 4 หลัก) */
-function generateReceiptNumber(): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  const rand = Math.floor(1000 + Math.random() * 9000);
-  return `RCP-${y}${m}${d}-${rand}`;
 }
