@@ -1,0 +1,440 @@
+{
+  "nodes": [
+    {
+      "id": "_github_funding_document",
+      "label": "GitHub Funding Configuration",
+      "file_type": "document",
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.github/FUNDING.yml",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "_github_funding_github_obra",
+      "label": "GitHub Sponsor obra",
+      "file_type": "concept",
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.github/FUNDING.yml",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "_github_issue_template_bug_report_document",
+      "label": "Bug Report Issue Template",
+      "file_type": "document",
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.github/ISSUE_TEMPLATE/bug_report.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "_github_issue_template_bug_report_fields",
+      "label": "Bug Report Form Fields (environment, repro steps, expected/actual behavior, debug log, superpowers-vs-platform check)",
+      "file_type": "concept",
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.github/ISSUE_TEMPLATE/bug_report.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "_github_issue_template_config_document",
+      "label": "Issue Template Configuration",
+      "file_type": "document",
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.github/ISSUE_TEMPLATE/config.yml",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "_github_issue_template_config_discord",
+      "label": "Discord Questions & Help Channel (discord.gg/35wsABTejz)",
+      "file_type": "concept",
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.github/ISSUE_TEMPLATE/config.yml",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "_github_issue_template_feature_request_document",
+      "label": "Feature Request Issue Template",
+      "file_type": "document",
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.github/ISSUE_TEMPLATE/feature_request.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "_github_issue_template_feature_request_fields",
+      "label": "Feature Request Form Fields (problem statement, proposed solution, alternatives, core-appropriateness check, environment, context)",
+      "file_type": "concept",
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.github/ISSUE_TEMPLATE/feature_request.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "_github_issue_template_platform_support_document",
+      "label": "IDE / Platform Support Issue Template",
+      "file_type": "document",
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.github/ISSUE_TEMPLATE/platform_support.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "_github_issue_template_platform_support_fields",
+      "label": "Platform Support Form Fields (IDE name+link, plugin system docs, manual install attempt, environment)",
+      "file_type": "concept",
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.github/ISSUE_TEMPLATE/platform_support.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "_github_pull_request_template_document",
+      "label": "Pull Request Template",
+      "file_type": "document",
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.github/PULL_REQUEST_TEMPLATE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "_github_pull_request_template_required_sections",
+      "label": "PR Required Sections (submitter info, problem, what changes, core-appropriateness, alternatives, unrelated changes, existing PRs, env tested, new harness transcript, evaluation, rigor, human review)",
+      "file_type": "concept",
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.github/PULL_REQUEST_TEMPLATE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "_github_pull_request_template_prerequisites",
+      "label": "PR Submission Prerequisites (target dev not main, human review checkbox, no blank sections, no unrelated changes, no 3rd-party promo, no project-specific config, no unevaled behavior changes)",
+      "file_type": "concept",
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.github/PULL_REQUEST_TEMPLATE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "_github_pull_request_template_harness_acceptance",
+      "label": "New Harness Acceptance Test (loads using-superpowers bootstrap; clean session prompt 'Let's make a react todo list' auto-triggers brainstorming skill before any code written)",
+      "file_type": "concept",
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.github/PULL_REQUEST_TEMPLATE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "_opencode_install_document",
+      "label": "OpenCode Installation Guide",
+      "file_type": "document",
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.opencode/INSTALL.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "_opencode_install_steps",
+      "label": "OpenCode Install Steps (add superpowers@git+... to plugin array in opencode.json, restart OpenCode, verify via 'Tell me about your superpowers', update cache or reinstall for new commits, pin via #tag)",
+      "file_type": "concept",
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.opencode/INSTALL.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "_opencode_install_tool_mapping",
+      "label": "OpenCode Skill-to-Tool Mapping (todowrite, task+subagent_type, skill, read, apply_patch, bash, grep/glob, webfetch)",
+      "file_type": "concept",
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.opencode/INSTALL.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "_opencode_install_migration",
+      "label": "OpenCode Migration from Symlink Install (remove superpowers.js symlink, remove skills/superpowers dir, optionally remove cloned repo, remove skills.paths from opencode.json)",
+      "file_type": "concept",
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.opencode/INSTALL.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "assets_superpowers_small_image",
+      "label": "Superpowers Small Logo (SVG 512x512 branding icon with symmetrical lightning-bolt/flame shapes around a central focal element — small variant of project branding)",
+      "file_type": "image",
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/assets/superpowers-small.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "_github_funding_document",
+      "target": "_github_funding_github_obra",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.99,
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.github/FUNDING.yml",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "_github_issue_template_bug_report_document",
+      "target": "_github_issue_template_bug_report_fields",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.98,
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.github/ISSUE_TEMPLATE/bug_report.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "_github_issue_template_config_document",
+      "target": "_github_issue_template_config_discord",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.99,
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.github/ISSUE_TEMPLATE/config.yml",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "_github_issue_template_feature_request_document",
+      "target": "_github_issue_template_feature_request_fields",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.98,
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.github/ISSUE_TEMPLATE/feature_request.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "_github_issue_template_platform_support_document",
+      "target": "_github_issue_template_platform_support_fields",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.98,
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.github/ISSUE_TEMPLATE/platform_support.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "_github_pull_request_template_document",
+      "target": "_github_pull_request_template_required_sections",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.99,
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.github/PULL_REQUEST_TEMPLATE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "_github_pull_request_template_document",
+      "target": "_github_pull_request_template_prerequisites",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.97,
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.github/PULL_REQUEST_TEMPLATE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "_github_pull_request_template_document",
+      "target": "_github_pull_request_template_harness_acceptance",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.97,
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.github/PULL_REQUEST_TEMPLATE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "_github_pull_request_template_prerequisites",
+      "target": "_github_pull_request_template_harness_acceptance",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.78,
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.github/PULL_REQUEST_TEMPLATE.md",
+      "source_location": null,
+      "weight": 0.7
+    },
+    {
+      "source": "_opencode_install_document",
+      "target": "_opencode_install_steps",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.99,
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.opencode/INSTALL.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "_opencode_install_document",
+      "target": "_opencode_install_tool_mapping",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.99,
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.opencode/INSTALL.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "_opencode_install_document",
+      "target": "_opencode_install_migration",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.96,
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.opencode/INSTALL.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "_opencode_install_steps",
+      "target": "_opencode_install_migration",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.opencode/INSTALL.md",
+      "source_location": null,
+      "weight": 0.7
+    },
+    {
+      "source": "_github_issue_template_bug_report_fields",
+      "target": "_github_issue_template_feature_request_fields",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.72,
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.github/ISSUE_TEMPLATE/bug_report.md",
+      "source_location": null,
+      "weight": 0.6
+    },
+    {
+      "source": "_github_issue_template_feature_request_fields",
+      "target": "_github_issue_template_platform_support_fields",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.7,
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.github/ISSUE_TEMPLATE/feature_request.md",
+      "source_location": null,
+      "weight": 0.6
+    },
+    {
+      "source": "_github_issue_template_config_document",
+      "target": "_github_issue_template_bug_report_document",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.9,
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.github/ISSUE_TEMPLATE/config.yml",
+      "source_location": null,
+      "weight": 0.9
+    },
+    {
+      "source": "_github_issue_template_config_document",
+      "target": "_github_issue_template_feature_request_document",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.9,
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.github/ISSUE_TEMPLATE/config.yml",
+      "source_location": null,
+      "weight": 0.9
+    },
+    {
+      "source": "_github_issue_template_config_document",
+      "target": "_github_issue_template_platform_support_document",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.9,
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.github/ISSUE_TEMPLATE/config.yml",
+      "source_location": null,
+      "weight": 0.9
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "bug_report_form_group",
+      "label": "Bug Report Form Group",
+      "nodes": [
+        "_github_issue_template_bug_report_document",
+        "_github_issue_template_bug_report_fields",
+        "_github_issue_template_config_document"
+      ],
+      "relation": "participate_in",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.92,
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.github/ISSUE_TEMPLATE/bug_report.md"
+    },
+    {
+      "id": "pr_submission_process",
+      "label": "PR Submission Process",
+      "nodes": [
+        "_github_pull_request_template_document",
+        "_github_pull_request_template_required_sections",
+        "_github_pull_request_template_prerequisites",
+        "_github_pull_request_template_harness_acceptance"
+      ],
+      "relation": "form",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.94,
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.github/PULL_REQUEST_TEMPLATE.md"
+    },
+    {
+      "id": "opencode_install_procedure",
+      "label": "OpenCode Installation Procedure",
+      "nodes": [
+        "_opencode_install_document",
+        "_opencode_install_steps",
+        "_opencode_install_migration",
+        "_opencode_install_tool_mapping"
+      ],
+      "relation": "implement",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.93,
+      "source_file": "/home/yoru/Documents/trae_projects/ANT-Elibary/external/superpowers/.opencode/INSTALL.md"
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}
